@@ -10,7 +10,6 @@ const createUserSchema = z.object({
   password: z.string().min(8),
   role: z.enum(["sales", "power_company"]),
   companyName: z.string().optional(),
-  companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
   companyIndustry: z.string().optional(),
 });
@@ -19,7 +18,6 @@ const updateUserSchema = z.object({
   userId: z.number(),
   name: z.string().optional(),
   companyName: z.string().optional(),
-  companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
   companyIndustry: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -71,7 +69,6 @@ export const adminRouter = router({
         password: input.password,
         role: input.role,
         companyName: input.companyName,
-        companyAddress: input.companyAddress,
         companyPhone: input.companyPhone,
         companyIndustry: input.companyIndustry,
       });
@@ -97,7 +94,6 @@ export const adminRouter = router({
       const updateData: any = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.companyName !== undefined) updateData.companyName = input.companyName;
-      if (input.companyAddress !== undefined) updateData.companyAddress = input.companyAddress;
       if (input.companyPhone !== undefined) updateData.companyPhone = input.companyPhone;
       if (input.companyIndustry !== undefined) updateData.companyIndustry = input.companyIndustry;
       if (input.isActive !== undefined) updateData.isActive = input.isActive;

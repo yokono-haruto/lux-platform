@@ -10,7 +10,6 @@ export const users = sqliteTable("users", {
   passwordHash: text("passwordHash"),
   role: text("role").default("user").notNull(),
   companyName: text("companyName"),
-  companyAddress: text("companyAddress"),
   companyPhone: text("companyPhone"),
   companyIndustry: text("companyIndustry"),
   isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),

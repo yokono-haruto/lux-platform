@@ -118,7 +118,6 @@ export async function createUserWithPassword(data: {
   passwordHash: string;
   role: string;
   companyName?: string;
-  companyAddress?: string;
   companyPhone?: string;
   companyIndustry?: string;
   isActive: boolean;
@@ -135,7 +134,6 @@ export async function createUserWithPassword(data: {
     passwordHash: data.passwordHash,
     role: data.role as any,
     companyName: data.companyName,
-    companyAddress: data.companyAddress,
     companyPhone: data.companyPhone,
     companyIndustry: data.companyIndustry,
     isActive: data.isActive,

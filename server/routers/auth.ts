@@ -17,7 +17,6 @@ const changePasswordSchema = z.object({
 const updateProfileSchema = z.object({
   name: z.string().optional(),
   companyName: z.string().optional(),
-  companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
   companyIndustry: z.string().optional(),
 });
@@ -86,7 +85,6 @@ export const authRouter = router({
       name: ctx.user.name,
       role: ctx.user.role,
       companyName: ctx.user.companyName,
-      companyAddress: ctx.user.companyAddress,
       companyPhone: ctx.user.companyPhone,
       companyIndustry: ctx.user.companyIndustry,
     };
