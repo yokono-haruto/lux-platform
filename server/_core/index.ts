@@ -54,7 +54,6 @@ async function initializeDatabase() {
         passwordHash TEXT,
         role TEXT DEFAULT 'user' NOT NULL,
         companyName TEXT,
-        companyAddress TEXT,
         companyPhone TEXT,
         companyIndustry TEXT,
         isActive INTEGER DEFAULT 1 NOT NULL,
