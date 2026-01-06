@@ -114,16 +114,18 @@ export default function AdminDashboard() {
           </Link>
 
           {/* 取引・請求管理 */}
-          <div className="group bg-[#0f2847]/40 border border-gray-800 rounded-2xl p-8 opacity-60 cursor-not-allowed flex flex-col h-full">
-            <div className="w-14 h-14 bg-gray-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 border border-gray-700">💳</div>
-            <h3 className="text-2xl font-bold text-gray-400 mb-4">取引・請求管理</h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-8 flex-grow">
-              成約した案件の請求状況、支払い確認、および取引履歴の管理を行います。（準備中）
-            </p>
-            <div className="text-gray-600 font-bold text-xs tracking-widest pt-6 border-t border-gray-800">
-              COMING SOON
-            </div>
-          </div>
+          <Link href="/admin/transactions">
+            <a className="group bg-[#0f2847] border border-cyan-500/20 rounded-2xl p-8 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all shadow-xl flex flex-col h-full">
+              <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-purple-500/20">💳</div>
+              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors">取引・請求管理</h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
+                成約した案件の請求状況、支払い確認、および取引履歴の管理を行います。
+              </p>
+              <div className="flex items-center text-cyan-400 font-bold text-sm pt-6 border-t border-cyan-500/10">
+                管理画面を開く <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+              </div>
+            </a>
+          </Link>
         </div>
       </main>
     </div>
