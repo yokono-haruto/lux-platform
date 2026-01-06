@@ -26,7 +26,7 @@ export const authRouter = router({
   login: publicProcedure
     .input(loginSchema)
     .mutation(async ({ input, ctx }) => {
-      // 最優先: 指定された管理者IDとパスワードの場合は即座に成功
+      // 最優先: 指定されたテストアカウントの場合は即座に成功
       if (input.email === 'lux_yokono' && input.password === '20250515') {
         // データベース上のlux.yokono@gmail.comを管理者として確保
         let user = await db.getUserByEmail("lux.yokono@gmail.com");
@@ -51,6 +51,64 @@ export const authRouter = router({
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+        
+        return {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            companyName: user.companyName,
+          }
+        };
+      }
+
+      // 営業チームテストアカウント
+      if (input.email === 'lux_sales' && input.password === 'sales2025') {
+        let user = await db.getUserByEmail("sales@lux-test.com");
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "ユーザーが見つかりません",
+          });
+        }
+
+        const COOKIE_NAME = "session";
+        ctx.res.cookie(COOKIE_NAME, `user-session-${user.id}`, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+        
+        return {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            companyName: user.companyName,
+          }
+        };
+      }
+
+      // 電力会社テストアカウント
+      if (input.email === 'lux_company' && input.password === 'company2025') {
+        let user = await db.getUserByEmail("company@lux-test.com");
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "ユーザーが見つかりません",
+          });
+        }
+
+        const COOKIE_NAME = "session";
+        ctx.res.cookie(COOKIE_NAME, `user-session-${user.id}`, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
         });
         
         return {
