@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1767661493940,
+      "tag": "0000_rainy_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1767661750833,
+      "tag": "0001_supreme_timeslip",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1767663572656,
+      "tag": "0002_many_stone_men",
+      "breakpoints": true
+    }
+  ]
+}
