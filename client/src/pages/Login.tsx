@@ -19,7 +19,7 @@ export default function Login() {
       } else if (user.role === "sales") {
         navigate("/sales/dashboard");
       } else if (user.role === "power_company") {
-        navigate("/marketplace");
+        navigate("/company/dashboard");
       } else {
         navigate("/");
       }

@@ -6,7 +6,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import SalesDashboard from "./pages/SalesDashboard";
+import SalesDashboard from "./pages/sales/SalesDashboard";
+import CompanyDashboard from "./pages/company/CompanyDashboard";
 import Marketplace from "./pages/Marketplace";
 import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/sales/dashboard" component={SalesDashboard} />
+      <Route path="/company/dashboard" component={CompanyDashboard} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/users" component={UserManagement} />

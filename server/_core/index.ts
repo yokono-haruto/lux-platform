@@ -140,6 +140,62 @@ async function initializeDatabase() {
     console.log("🔑 Password: 20250515");
     console.log("🆔 User ID: lux_yokono");
     
+    // Create sales test user
+    console.log("👤 Creating sales test user...");
+    const salesPassword = "sales2025";
+    const salesPasswordHash = await bcrypt.hash(salesPassword, 10);
+    
+    await db.insert(users).values({
+      email: "sales@lux-test.com",
+      name: "営業部隊テスト",
+      loginMethod: "email",
+      passwordHash: salesPasswordHash,
+      role: "sales",
+      companyName: "LUX営業部",
+      isActive: true,
+      openId: "lux_sales"
+    }).onConflictDoUpdate({
+      target: users.email,
+      set: {
+        passwordHash: salesPasswordHash,
+        role: "sales",
+        isActive: true
+      }
+    });
+    
+    console.log("✅ Sales user created successfully");
+    console.log("📧 Email: sales@lux-test.com");
+    console.log("🔑 Password: sales2025");
+    console.log("🆔 User ID: lux_sales");
+    
+    // Create power company test user
+    console.log("👤 Creating power company test user...");
+    const companyPassword = "company2025";
+    const companyPasswordHash = await bcrypt.hash(companyPassword, 10);
+    
+    await db.insert(users).values({
+      email: "company@lux-test.com",
+      name: "電力会社テスト",
+      loginMethod: "email",
+      passwordHash: companyPasswordHash,
+      role: "power_company",
+      companyName: "テスト電力株式会社",
+      isActive: true,
+      openId: "lux_company"
+    }).onConflictDoUpdate({
+      target: users.email,
+      set: {
+        passwordHash: companyPasswordHash,
+        role: "power_company",
+        isActive: true
+      }
+    });
+    
+    console.log("✅ Power company user created successfully");
+    console.log("📧 Email: company@lux-test.com");
+    console.log("🔑 Password: company2025");
+    console.log("🆔 User ID: lux_company");
+    
   } catch (e) {
     console.error("❌ Database initialization error:", e.message);
     throw e;
