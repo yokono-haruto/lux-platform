@@ -120,7 +120,7 @@ async function initializeDatabase() {
     
     await db.insert(users).values({
       email: adminEmail,
-      name: "横野 晴人",
+      name: "横野 晴飛",
       loginMethod: "email",
       passwordHash: passwordHash,
       role: "admin",

@@ -13,42 +13,14 @@ export default function TransactionsManagement() {
     return null;
   }
 
-  // Mock data for demonstration
-  const transactions = [
-    {
-      id: 1,
-      appointmentTitle: "東京都港区 新規顧客開拓案件",
-      companyName: "東京電力エナジーパートナー",
-      salesTeam: "営業チームA",
-      amount: 50000,
-      status: "completed",
-      date: "2026-01-05",
-    },
-    {
-      id: 2,
-      appointmentTitle: "神奈川県横浜市 法人向けアポイント",
-      companyName: "中部電力ミライズ",
-      salesTeam: "営業チームB",
-      amount: 35000,
-      status: "pending",
-      date: "2026-01-04",
-    },
-    {
-      id: 3,
-      appointmentTitle: "大阪府大阪市 大型商業施設案件",
-      companyName: "関西電力",
-      salesTeam: "営業チームC",
-      amount: 80000,
-      status: "completed",
-      date: "2026-01-03",
-    },
-  ];
+  // Empty data - will be populated from database
+  const transactions: any[] = [];
 
   const stats = [
-    { label: "総取引額", value: "¥165,000", icon: "💰", color: "cyan" },
-    { label: "完了取引", value: "2件", icon: "✅", color: "green" },
-    { label: "保留中", value: "1件", icon: "⏳", color: "yellow" },
-    { label: "今月の収益", value: "¥165,000", icon: "📈", color: "purple" },
+    { label: "総取引額", value: "¥0", icon: "💰", color: "cyan" },
+    { label: "完了取引", value: "0件", icon: "✅", color: "green" },
+    { label: "保留中", value: "0件", icon: "⏳", color: "yellow" },
+    { label: "今月の収益", value: "¥0", icon: "📈", color: "purple" },
   ];
 
   const getStatusBadge = (status: string) => {
