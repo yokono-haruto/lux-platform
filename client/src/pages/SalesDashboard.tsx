@@ -19,9 +19,16 @@ const appointmentSchema = z.object({
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
 
 export default function SalesDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [showForm, setShowForm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    navigate("/login");
+  };
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
@@ -60,9 +67,18 @@ export default function SalesDashboard() {
       <header className="border-b-4 border-black py-6 px-8">
         <div className="container max-w-6xl flex justify-between items-center">
           <h1 className="text-headline">営業部隊ダッシュボード</h1>
-          <div className="text-sm">
-            <p className="font-bold">{user.name}</p>
-            <p className="text-gray-600">{user.companyName}</p>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-right">
+              <p className="font-bold">{user.name}</p>
+              <p className="text-gray-600">{user.companyName}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="px-4 py-2 border-2 border-black font-bold hover:bg-black hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingOut ? "ログアウト中..." : "🚪 ログアウト"}
+            </button>
           </div>
         </div>
       </header>

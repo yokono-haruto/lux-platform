@@ -1,10 +1,18 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useState } from "react";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, navigate] = useLocation();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    navigate("/login");
+  };
 
   if (!user || user.role !== "admin") {
     navigate("/");
@@ -37,6 +45,13 @@ export default function AdminDashboard() {
             <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/10">
               🛡️
             </div>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingOut ? "ログアウト中..." : "🚪 ログアウト"}
+            </button>
           </div>
         </div>
       </header>

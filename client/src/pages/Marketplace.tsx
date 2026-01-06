@@ -15,8 +15,15 @@ const bidSchema = z.object({
 type BidFormData = z.infer<typeof bidSchema>;
 
 export default function Marketplace() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, navigate] = useLocation();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    navigate("/login");
+  };
   const [filters, setFilters] = useState({
     industry: "",
     scale: "",
@@ -71,9 +78,18 @@ export default function Marketplace() {
             <h1 className="text-3xl font-bold text-cyan-400 mb-1">LUX マーケットプレイス</h1>
             <p className="text-sm text-gray-400">アポイント取引プラットフォーム</p>
           </div>
-          <div className="text-sm text-right">
-            <p className="font-bold text-cyan-300">{user.name}</p>
-            <p className="text-gray-400">{user.companyName}</p>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-right">
+              <p className="font-bold text-cyan-300">{user.name}</p>
+              <p className="text-gray-400">{user.companyName}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingOut ? "ログアウト中..." : "🚪 ログアウト"}
+            </button>
           </div>
         </div>
       </header>
