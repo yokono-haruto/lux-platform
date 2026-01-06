@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -55,9 +55,16 @@ export default function AppointmentManagement() {
       {/* Header */}
       <header className="border-b border-cyan-500/30 py-6 px-8 bg-gradient-to-r from-[#0a1628] to-[#0f2847]">
         <div className="container max-w-6xl flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-cyan-400 mb-1">アポイント案件管理</h1>
-            <p className="text-sm text-gray-400">LUX アポイント取引プラットフォーム</p>
+          <div className="flex items-center gap-6">
+            <Link href="/admin/dashboard">
+              <a className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                <span className="text-2xl">←</span>
+              </a>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-cyan-400 mb-1">アポイント案件管理</h1>
+              <p className="text-sm text-gray-400">LUX アポイント取引プラットフォーム</p>
+            </div>
           </div>
           <div className="text-sm text-right">
             <p className="font-bold text-cyan-300">{user.name}</p>
