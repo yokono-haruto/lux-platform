@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Send, User, MessageSquare } from "lucide-react";
+import { Send, User, MessageSquare, Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,9 +60,31 @@ export default function Messages() {
     });
   };
 
+  const goBack = () => {
+    if (user.role === "admin") setLocation("/admin/dashboard");
+    else if (user.role === "sales") setLocation("/sales/dashboard");
+    else if (user.role === "power_company") setLocation("/company/dashboard");
+    else setLocation("/");
+  };
+
   return (
-    <div className="min-h-screen bg-[#000b18] text-white pt-24 pb-12">
-      <div className="container max-w-6xl mx-auto px-4 h-[700px] flex gap-6">
+    <div className="min-h-screen bg-[#000b18] text-white">
+      {/* Header */}
+      <header className="bg-[#001529] border-b border-[#003a70] py-4 px-8 sticky top-0 z-50">
+        <div className="container max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <button onClick={goBack} className="p-2 text-gray-400 hover:text-cyan-400">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-bold text-cyan-400">メッセージ</h1>
+          </div>
+          <button onClick={() => setLocation("/")} className="p-2 text-gray-400 hover:text-green-400" title="ホームに戻る">
+            <Home className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      <div className="container max-w-6xl mx-auto px-4 py-6 h-[calc(100vh-80px)] flex gap-6">
         {/* Sidebar */}
         <div className="w-1/3 bg-[#001529] border border-[#003a70] rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-[#003a70] bg-[#001c36]">

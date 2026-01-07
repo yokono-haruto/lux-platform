@@ -249,6 +249,12 @@ export async function getAllBids() {
   return db.select().from(bids);
 }
 
+export async function updateBidStatus(bidId: number, status: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bids).set({ status }).where(eq(bids.id, bidId));
+}
+
 // Notifications
 export async function createNotification(data: InsertNotification): Promise<Notification> {
   const db = await getDb();

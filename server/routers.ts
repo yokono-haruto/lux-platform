@@ -127,6 +127,26 @@ const bidsRouter = router({
     .query(async ({ ctx }) => {
       return db.getBidsByUserId(ctx.user.id);
     }),
+
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "管理者のみ" });
+    }
+    return db.getAllBids();
+  }),
+
+  myBids: protectedProcedure.query(async ({ ctx }) => {
+    return db.getBidsByUserId(ctx.user.id);
+  }),
+
+  updateStatus: protectedProcedure
+    .input(z.object({ bidId: z.number(), status: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "管理者のみ" });
+      }
+      await db.updateBidStatus(input.bidId, input.status);
+    }),
 });
 
 const notificationsRouter = router({
@@ -143,6 +163,27 @@ const notificationsRouter = router({
   markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
     await db.markAllNotificationsAsRead(ctx.user.id);
   }),
+
+  broadcast: protectedProcedure
+    .input(z.object({ title: z.string(), content: z.string(), targetRole: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "管理者のみ" });
+      }
+      const users = await db.getAllUsers();
+      const targets = input.targetRole === "all" 
+        ? users 
+        : users.filter(u => u.role === input.targetRole || (input.targetRole === "company" && u.role === "power_company"));
+      for (const u of targets) {
+        await db.createNotification({
+          userId: u.id,
+          type: "system",
+          title: input.title,
+          content: input.content,
+        });
+      }
+      return { sent: targets.length };
+    }),
 });
 
 const messagesRouter = router({

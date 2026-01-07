@@ -6,14 +6,16 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { NotificationBell } from "@/components/NotificationBell";
+import { MessageSquare, Home, TrendingUp, FileText } from "lucide-react";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
   industry: z.string().min(1, "業種は必須です"),
   scale: z.string().min(1, "規模は必須です"),
   area: z.string().min(1, "エリアは必須です"),
-  bidPrice: z.number().min(0, "入札設定価格は0以上である必要があります"),
-  monthlyAmount: z.number().min(0, "月額料金は0以上である必要があります"),
+  bidPrice: z.number().min(0, "入札設定価格は0以上"),
+  monthlyAmount: z.number().min(0, "月額料金は0以上"),
   description: z.string().optional(),
 });
 
@@ -35,14 +37,8 @@ export default function SalesDashboard() {
     resolver: zodResolver(appointmentSchema),
   });
 
-  const appointmentsQuery = trpc.appointments.list.useQuery({
-    status: "active",
-  }, {
-    retry: false,
-    onError: (error) => {
-      console.error('Appointments query error:', error);
-    },
-  });
+  const appointmentsQuery = trpc.appointments.list.useQuery({ status: "active" }, { retry: false });
+  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery(undefined, { retry: false });
 
   const createAppointmentMutation = trpc.appointments.create.useMutation({
     onSuccess: () => {
@@ -60,279 +56,176 @@ export default function SalesDashboard() {
     createAppointmentMutation.mutate(data);
   };
 
-  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery(undefined, {
-    retry: false,
-    onError: (error) => {
-      console.error('Dashboard stats error:', error);
-    },
-  });
-
   if (!user) {
-    navigate("/");
+    navigate("/login");
     return null;
   }
+
+  const stats = dashboardStatsQuery.data || { totalSubmitted: 0, activeCount: 0, closedCount: 0 };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
-      <header className="bg-slate-800/50 backdrop-blur-sm border-b border-blue-500/30 py-4 px-8">
+      <header className="bg-slate-800/50 backdrop-blur-sm border-b border-blue-500/30 py-4 px-8 sticky top-0 z-50">
         <div className="container mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-blue-400">LUX SALES</h1>
-            <p className="text-sm text-gray-400">営業部隊ダッシュボード</p>
+            <h1 className="text-2xl font-bold text-blue-400">LUX SALES</h1>
+            <p className="text-xs text-gray-400">営業部隊ダッシュボード</p>
           </div>
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50"
-          >
-            🛡️ ログアウト
-          </button>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="メッセージ">
+              <MessageSquare className="h-5 w-5" />
+            </button>
+            <button onClick={() => navigate("/")} className="p-2 text-gray-300 hover:text-green-400 transition-colors" title="ホームに戻る">
+              <Home className="h-5 w-5" />
+            </button>
+            <button onClick={handleLogout} disabled={isLoggingOut} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+              {isLoggingOut ? "..." : "ログアウト"}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Welcome Section */}
-      <section className="py-8 px-8 bg-slate-800/30 border-b border-blue-500/20">
-        <div className="container mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-2">ようこそ、営業部隊様</h2>
-          <p className="text-gray-300">このダッシュボードから案件の投入や管理を行うことができます。</p>
+      <main className="container mx-auto py-8 px-8">
+        {/* Welcome */}
+        <div className="bg-slate-800/30 border border-blue-500/20 rounded-xl p-6 mb-8">
+          <h2 className="text-xl font-bold text-white mb-2">ようこそ、{user.name || "営業部隊"}様</h2>
+          <p className="text-gray-300 text-sm">このダッシュボードから案件の投入や管理を行うことができます。</p>
         </div>
-      </section>
 
-      {/* Stats Cards */}
-      <section className="py-8 px-8">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6 hover:border-blue-400/50 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">📝</div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-3">
+              <FileText className="h-6 w-6 text-blue-400" />
               <div>
-                <div className="text-3xl font-bold text-blue-400">
-                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.totalSubmitted ?? 0)}
-                </div>
-                <p className="text-sm text-gray-400">投入済み案件</p>
+                <div className="text-2xl font-bold text-blue-400">{stats.totalSubmitted}</div>
+                <div className="text-gray-400 text-xs">投入済み案件</div>
               </div>
             </div>
           </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-green-500/30 rounded-xl p-6 hover:border-green-400/50 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">🌐</div>
+          <div className="bg-slate-800/50 border border-green-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🌐</div>
               <div>
-                <div className="text-3xl font-bold text-green-400">
-                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.activeCount ?? 0)}
-                </div>
-                <p className="text-sm text-gray-400">公開中</p>
+                <div className="text-2xl font-bold text-green-400">{stats.activeCount}</div>
+                <div className="text-gray-400 text-xs">公開中</div>
               </div>
             </div>
           </div>
-          
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-yellow-500/30 rounded-xl p-6 hover:border-yellow-400/50 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">💰</div>
+          <div className="bg-slate-800/50 border border-yellow-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">💰</div>
               <div>
-                <div className="text-3xl font-bold text-yellow-400">
-                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.closedCount ?? 0)}
-                </div>
-                <p className="text-sm text-gray-400">成約数</p>
+                <div className="text-2xl font-bold text-yellow-400">{stats.closedCount}</div>
+                <div className="text-gray-400 text-xs">成約数</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-6 w-6 text-purple-400" />
+              <div>
+                <div className="text-2xl font-bold text-purple-400">今月</div>
+                <div className="text-gray-400 text-xs">月別統計</div>
               </div>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Quick Actions */}
-      <section className="py-8 px-8">
-        <div className="container mx-auto">
-          <h3 className="text-xl font-bold text-white mb-4">クイックアクション</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              <span className="text-2xl">📝</span>
-              <span>{showForm ? "フォームを閉じる" : "新規案件を投入"}</span>
-            </button>
-            
-            <button
-              onClick={() => navigate("/marketplace")}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              <span className="text-2xl">📊</span>
-              <span>案件一覧を表示</span>
-            </button>
-            
-            <button
-              onClick={() => navigate("/")}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              <span className="text-2xl">🏠</span>
-              <span>ホームに戻る</span>
-            </button>
-          </div>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+            <span className="text-xl">📝</span> {showForm ? "フォームを閉じる" : "新規案件を投入"}
+          </button>
+          <button onClick={() => navigate("/messages")} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+            <MessageSquare className="h-5 w-5" /> 管理者にメッセージ
+          </button>
+          <button onClick={() => navigate("/")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+            <Home className="h-5 w-5" /> ホームに戻る
+          </button>
         </div>
-      </section>
 
-      {/* Registration Form */}
-      {showForm && (
-        <section className="py-8 px-8">
-          <div className="container mx-auto">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-blue-500/30 rounded-xl p-8">
-              <h3 className="text-2xl font-bold text-white mb-6">新規案件登録</h3>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Form */}
+        {showForm && (
+          <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6 mb-8">
+            <h3 className="text-xl font-bold text-white mb-4">新規案件登録</h3>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">タイトル *</label>
+                <input {...register("title")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="案件タイトル" />
+                {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">タイトル *</label>
-                  <input
-                    {...register("title")}
-                    type="text"
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                    placeholder="案件タイトルを入力"
-                  />
-                  {errors.title && (
-                    <p className="text-red-400 text-sm mt-1">{errors.title.message}</p>
-                  )}
+                  <label className="block text-sm text-gray-300 mb-1">業種 *</label>
+                  <input {...register("industry")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="製造業" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">業種 *</label>
-                    <input
-                      {...register("industry")}
-                      type="text"
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                      placeholder="例: 製造業"
-                    />
-                    {errors.industry && (
-                      <p className="text-red-400 text-sm mt-1">{errors.industry.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">規模 *</label>
-                    <select 
-                      {...register("scale")} 
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                    >
-                      <option value="">選択してください</option>
-                      <option value="small">小</option>
-                      <option value="medium">中</option>
-                      <option value="large">大</option>
-                    </select>
-                    {errors.scale && (
-                      <p className="text-red-400 text-sm mt-1">{errors.scale.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">エリア *</label>
-                    <input
-                      {...register("area")}
-                      type="text"
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                      placeholder="例: 東京都"
-                    />
-                    {errors.area && (
-                      <p className="text-red-400 text-sm mt-1">{errors.area.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">入札設定価格 (円) *</label>
-                    <input
-                      {...register("bidPrice", { valueAsNumber: true })}
-                      type="number"
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                      placeholder="例: 50000"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">電力会社への販売価格</p>
-                    {errors.bidPrice && (
-                      <p className="text-red-400 text-sm mt-1">{errors.bidPrice.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">月額料金/使用量 (円) *</label>
-                    <input
-                      {...register("monthlyAmount", { valueAsNumber: true })}
-                      type="number"
-                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                      placeholder="例: 500000"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">案件の規模感（現在の月額料金）</p>
-                    {errors.monthlyAmount && (
-                      <p className="text-red-400 text-sm mt-1">{errors.monthlyAmount.message}</p>
-                    )}
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">詳細説明</label>
-                  <textarea
-                    {...register("description")}
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none h-32"
-                    placeholder="案件の詳細を入力（オプション）"
-                  />
+                  <label className="block text-sm text-gray-300 mb-1">規模 *</label>
+                  <select {...register("scale")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white">
+                    <option value="">選択</option>
+                    <option value="small">小</option>
+                    <option value="medium">中</option>
+                    <option value="large">大</option>
+                  </select>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={createAppointmentMutation.isPending}
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {createAppointmentMutation.isPending ? "登録中..." : "✅ 登録する"}
-                </button>
-              </form>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Appointments List */}
-      <section className="py-8 px-8">
-        <div className="container mx-auto">
-          <h3 className="text-xl font-bold text-white mb-4">投入済み案件一覧</h3>
-          <div className="space-y-4">
-            {appointmentsQuery.isLoading ? (
-              <div className="text-center py-12 bg-slate-800/30 rounded-xl">
-                <p className="text-gray-400">読み込み中...</p>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">エリア *</label>
+                  <input {...register("area")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="東京都" />
+                </div>
               </div>
-            ) : appointmentsQuery.data && appointmentsQuery.data.length > 0 ? (
-              appointmentsQuery.data.map((apt) => (
-                <div key={apt.id} className="bg-slate-800/50 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6 hover:border-blue-400/50 transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="text-xl font-bold text-white mb-2">{apt.title}</h4>
-                      <div className="flex flex-wrap gap-3 text-sm">
-                        <span className="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full">業種: {apt.industry}</span>
-                        <span className="px-3 py-1 bg-green-600/20 text-green-300 rounded-full">規模: {apt.scale}</span>
-                        <span className="px-3 py-1 bg-purple-600/20 text-purple-300 rounded-full">エリア: {apt.area}</span>
-                        <span className="px-3 py-1 bg-yellow-600/20 text-yellow-300 rounded-full">¥{apt.price?.toLocaleString() || "未設定"}</span>
-                      </div>
-                    </div>
-                    <span className={`px-4 py-2 rounded-lg font-semibold text-sm ${
-                      apt.status === "active" ? "bg-green-600/20 text-green-300" : "bg-gray-600/20 text-gray-300"
-                    }`}>
-                      {apt.status === "active" ? "🟢 公開中" : "⚫ 終了"}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">入札設定価格 (円) *</label>
+                  <input {...register("bidPrice", { valueAsNumber: true })} type="number" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="50000" />
+                  <p className="text-xs text-gray-500 mt-1">電力会社への販売価格</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">月額料金/使用量 (円) *</label>
+                  <input {...register("monthlyAmount", { valueAsNumber: true })} type="number" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="500000" />
+                  <p className="text-xs text-gray-500 mt-1">案件の規模感</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">詳細説明</label>
+                <textarea {...register("description")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white h-20" placeholder="オプション" />
+              </div>
+              <button type="submit" disabled={createAppointmentMutation.isPending} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50">
+                {createAppointmentMutation.isPending ? "登録中..." : "✅ 登録する"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Appointments List */}
+        <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-4">投入済み案件一覧</h3>
+          {appointmentsQuery.isLoading ? (
+            <div className="text-center text-gray-400 py-8">読み込み中...</div>
+          ) : appointmentsQuery.data?.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">案件がまだ登録されていません</div>
+          ) : (
+            <div className="space-y-3">
+              {appointmentsQuery.data?.map((apt) => (
+                <div key={apt.id} className="bg-slate-900/50 border border-slate-600 rounded-lg p-4 flex justify-between items-center">
+                  <div>
+                    <h4 className="font-semibold text-white">{apt.title}</h4>
+                    <p className="text-xs text-gray-400">{apt.industry} | {apt.area} | {apt.scale}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-blue-400 font-bold">¥{apt.price?.toLocaleString()}</div>
+                    <span className={`text-xs px-2 py-1 rounded ${apt.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      {apt.status === 'active' ? '公開中' : apt.status}
                     </span>
                   </div>
-                  {apt.description && (
-                    <p className="text-gray-300 mb-4">{apt.description}</p>
-                  )}
-                  <div className="text-xs text-gray-500">
-                    登録日: {new Date(apt.createdAt).toLocaleDateString("ja-JP")}
-                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-12 bg-slate-800/30 rounded-xl">
-                <p className="text-gray-400">案件がまだ登録されていません</p>
-                <p className="text-sm text-gray-500 mt-2">「新規案件を投入」ボタンから案件を登録してください</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      </section>
+      </main>
     </div>
   );
 }

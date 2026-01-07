@@ -134,20 +134,33 @@ export default function AdminDashboard() {
             </a>
           </Link>
 
-          {/* ホームに戻る */}
-          <button
-            onClick={() => navigate("/")}
-            className="group bg-[#0f2847] border border-green-500/20 rounded-2xl p-8 hover:bg-green-500/10 hover:border-green-400 transition-all shadow-xl flex flex-col h-full"
-          >
-            <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-green-500/20">🏠</div>
-            <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-green-300 transition-colors">ホームに戻る</h3>
-            <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
-              ダッシュボードを終了して、ホームページに戻ります。
-            </p>
-            <div className="flex items-center text-green-400 font-bold text-sm pt-6 border-t border-green-500/10">
-              ホームへ <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
-            </div>
-          </button>
+          {/* 入札対応管理 */}
+          <Link href="/admin/bids">
+            <a className="group bg-[#0f2847] border border-orange-500/20 rounded-2xl p-8 hover:bg-orange-500/10 hover:border-orange-400 transition-all shadow-xl flex flex-col h-full">
+              <div className="w-14 h-14 bg-orange-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-orange-500/20">📥</div>
+              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-orange-300 transition-colors">入札対応管理</h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
+                入札の通知確認、対応状況の管理を行います。
+              </p>
+              <div className="flex items-center text-orange-400 font-bold text-sm pt-6 border-t border-orange-500/10">
+                管理画面を開く <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+              </div>
+            </a>
+          </Link>
+
+          {/* 一斉周知 */}
+          <Link href="/admin/broadcast">
+            <a className="group bg-[#0f2847] border border-yellow-500/20 rounded-2xl p-8 hover:bg-yellow-500/10 hover:border-yellow-400 transition-all shadow-xl flex flex-col h-full">
+              <div className="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-yellow-500/20">📢</div>
+              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-yellow-300 transition-colors">一斉周知</h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
+                全ユーザーへのお知らせを送信します。
+              </p>
+              <div className="flex items-center text-yellow-400 font-bold text-sm pt-6 border-t border-yellow-500/10">
+                送信画面を開く <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+              </div>
+            </a>
+          </Link>
         </div>
       </main>
     </div>
