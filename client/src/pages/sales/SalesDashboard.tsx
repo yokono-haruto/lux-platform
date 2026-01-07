@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageBell } from "@/components/MessageBell";
 import { Footer } from "@/components/Footer";
-import { MessageSquare, TrendingUp, FileText, ArrowLeft, User } from "lucide-react";
+import { MessageSquare, TrendingUp, FileText, ArrowLeft, User, Home } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 const appointmentSchema = z.object({
@@ -29,6 +29,10 @@ export default function SalesDashboard() {
   const [, navigate] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [showMonthlyDetails, setShowMonthlyDetails] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedStatLabel, setSelectedStatLabel] = useState<string | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -84,6 +88,11 @@ export default function SalesDashboard() {
             <p className="text-xs text-gray-400">営業部隊ダッシュボード</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/sales/dashboard">
+              <a className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="ホーム">
+                <Home className="h-5 w-5" />
+              </a>
+            </Link>
             <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="戻る">
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -114,7 +123,12 @@ export default function SalesDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("投入済み案件");
+              setShowStatsModal(true);
+            }}
+            className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5 cursor-pointer hover:border-blue-500/60 transition-all">
             <div className="flex items-center gap-3">
               <FileText className="h-6 w-6 text-blue-400" />
               <div>
@@ -123,7 +137,12 @@ export default function SalesDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-green-500/30 rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("公開中");
+              setShowStatsModal(true);
+            }}
+            className="bg-slate-800/50 border border-green-500/30 rounded-xl p-5 cursor-pointer hover:border-green-500/60 transition-all">
             <div className="flex items-center gap-3">
               <div className="text-2xl">🌐</div>
               <div>
@@ -132,7 +151,12 @@ export default function SalesDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-orange-500/30 rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("成約済み");
+              setShowStatsModal(true);
+            }}
+            className="bg-slate-800/50 border border-orange-500/30 rounded-xl p-5 cursor-pointer hover:border-orange-500/60 transition-all">
             <div className="flex items-center gap-3">
               <div className="text-2xl">✅</div>
               <div>
@@ -141,7 +165,12 @@ export default function SalesDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("月別統計");
+              setShowStatsModal(true);
+            }}
+            className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5 cursor-pointer hover:border-purple-500/60 transition-all">
             <div className="flex items-center gap-3">
               <TrendingUp className="h-6 w-6 text-purple-400" />
               <div>
@@ -157,24 +186,34 @@ export default function SalesDashboard() {
           <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
             <h3 className="text-lg font-bold mb-4 text-blue-400">月別投入案件数</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={monthlyData}>
+              <BarChart data={monthlyData} onClick={(data) => {
+                if (data && data.activePayload) {
+                  setSelectedMonth(data.activePayload[0].payload.month);
+                  setShowMonthlyDetails(true);
+                }
+              }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="month" stroke="#666" />
                 <YAxis stroke="#666" />
                 <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #3b82f6" }} />
-                <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
             <h3 className="text-lg font-bold mb-4 text-blue-400">月別成約数</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={monthlyData}>
+              <LineChart data={monthlyData} onClick={(data) => {
+                if (data && data.activePayload) {
+                  setSelectedMonth(data.activePayload[0].payload.month);
+                  setShowMonthlyDetails(true);
+                }
+              }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="month" stroke="#666" />
                 <YAxis stroke="#666" />
                 <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #3b82f6" }} />
-                <Line type="monotone" dataKey="closed" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} />
+                <Line type="monotone" dataKey="closed" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} cursor="pointer" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -240,6 +279,66 @@ export default function SalesDashboard() {
       </main>
 
       <Footer />
+
+      {/* Stats Modal */}
+      {showStatsModal && selectedStatLabel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-blue-500/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-blue-400">{selectedStatLabel}の詳細</h3>
+              <button
+                onClick={() => {
+                  setShowStatsModal(false);
+                  setSelectedStatLabel(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-center py-8">
+              <p className="text-gray-400">現在、該当するデータがありません。</p>
+              <p className="text-gray-500 text-sm mt-2">案件が登録されると、ここに表示されます。</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Details Modal */}
+      {showMonthlyDetails && selectedMonth && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-blue-500/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-blue-400">{selectedMonth}の案件一覧</h3>
+              <button
+                onClick={() => {
+                  setShowMonthlyDetails(false);
+                  setSelectedMonth(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-slate-700/50 border border-blue-500/20 rounded-lg p-4">
+                <h4 className="font-bold text-lg mb-2">サンプル案件 1</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-400">業種</p>
+                    <p className="font-semibold">製造業</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">ステータス</p>
+                    <p className="font-semibold text-green-400">成約済み</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-center text-gray-400 py-4">実際の案件データがここに表示されます</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

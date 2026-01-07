@@ -5,13 +5,17 @@ import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageBell } from "@/components/MessageBell";
 import { Footer } from "@/components/Footer";
-import { MessageSquare, TrendingUp, ShoppingCart, ArrowLeft, User } from "lucide-react";
+import { MessageSquare, TrendingUp, ShoppingCart, ArrowLeft, User, Home } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 export default function CompanyDashboard() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [showMonthlyDetails, setShowMonthlyDetails] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedStatLabel, setSelectedStatLabel] = useState<string | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -52,6 +56,11 @@ export default function CompanyDashboard() {
             <p className="text-xs text-gray-400">電力会社ダッシュボード</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/company/dashboard">
+              <a className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="ホーム">
+                <Home className="h-5 w-5" />
+              </a>
+            </Link>
             <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="戻る">
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -86,7 +95,12 @@ export default function CompanyDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("入札済み案件");
+              setShowStatsModal(true);
+            }}
+            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
             <div className="flex items-center gap-3">
               <div className="text-2xl">📋</div>
               <div>
@@ -95,7 +109,12 @@ export default function CompanyDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("入札中");
+              setShowStatsModal(true);
+            }}
+            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
             <div className="flex items-center gap-3">
               <div className="text-2xl">💰</div>
               <div>
@@ -104,7 +123,12 @@ export default function CompanyDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("今月の購入数");
+              setShowStatsModal(true);
+            }}
+            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
             <div className="flex items-center gap-3">
               <ShoppingCart className="h-6 w-6 text-purple-400" />
               <div>
@@ -113,7 +137,12 @@ export default function CompanyDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-5">
+          <div 
+            onClick={() => {
+              setSelectedStatLabel("今月の購入金額");
+              setShowStatsModal(true);
+            }}
+            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
             <div className="flex items-center gap-3">
               <TrendingUp className="h-6 w-6 text-yellow-400" />
               <div>
@@ -129,24 +158,34 @@ export default function CompanyDashboard() {
           <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6">
             <h3 className="text-lg font-bold mb-4 text-[#00a3ff]">月別購入金額</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={monthlyData}>
+              <BarChart data={monthlyData} onClick={(data) => {
+                if (data && data.activePayload) {
+                  setSelectedMonth(data.activePayload[0].payload.month);
+                  setShowMonthlyDetails(true);
+                }
+              }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#003a70" />
                 <XAxis dataKey="month" stroke="#666" />
                 <YAxis stroke="#666" />
                 <Tooltip contentStyle={{ backgroundColor: "#001529", border: "1px solid #003a70" }} />
-                <Bar dataKey="amount" fill="#00a3ff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="amount" fill="#00a3ff" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6">
             <h3 className="text-lg font-bold mb-4 text-[#00a3ff]">月別購入案件数</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={monthlyData}>
+              <LineChart data={monthlyData} onClick={(data) => {
+                if (data && data.activePayload) {
+                  setSelectedMonth(data.activePayload[0].payload.month);
+                  setShowMonthlyDetails(true);
+                }
+              }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#003a70" />
                 <XAxis dataKey="month" stroke="#666" />
                 <YAxis stroke="#666" />
                 <Tooltip contentStyle={{ backgroundColor: "#001529", border: "1px solid #003a70" }} />
-                <Line type="monotone" dataKey="count" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} />
+                <Line type="monotone" dataKey="count" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} cursor="pointer" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -190,6 +229,82 @@ export default function CompanyDashboard() {
       </main>
 
       <Footer />
+
+      {/* Stats Modal */}
+      {showStatsModal && selectedStatLabel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-[#00a3ff]/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-[#00a3ff]">{selectedStatLabel}の詳細</h3>
+              <button
+                onClick={() => {
+                  setShowStatsModal(false);
+                  setSelectedStatLabel(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-center py-8">
+              <p className="text-gray-400">現在、該当するデータがありません。</p>
+              <p className="text-gray-500 text-sm mt-2">入札や購入が登録されると、ここに表示されます。</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Details Modal */}
+      {showMonthlyDetails && selectedMonth && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-[#00a3ff]">{selectedMonth}の案件一覧</h3>
+              <button
+                onClick={() => {
+                  setShowMonthlyDetails(false);
+                  setSelectedMonth(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              {bids
+                .filter(bid => bid.status === "accepted")
+                .slice(0, 5)
+                .map((bid: any) => (
+                  <div key={bid.id} className="bg-[#000b18] border border-[#003a70] rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-lg">{bid.appointmentTitle || "案件"}</h4>
+                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">成約</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-400">入札額</p>
+                        <p className="font-semibold text-[#00a3ff]">¥{bid.bidAmount?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">ステータス</p>
+                        <p className="font-semibold text-green-400">成約済み</p>
+                      </div>
+                    </div>
+                    {bid.notes && (
+                      <div className="mt-3 pt-3 border-t border-[#003a70]">
+                        <p className="text-gray-400 text-xs">備考</p>
+                        <p className="text-sm">{bid.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {bids.filter(bid => bid.status === "accepted").length === 0 && (
+                <p className="text-center text-gray-400 py-8">この月の成約案件はありません</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,13 +5,15 @@ import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageBell } from "@/components/MessageBell";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Home } from "lucide-react";
 import { Footer } from "@/components/Footer";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedStat, setSelectedStat] = useState<string | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -43,6 +45,11 @@ export default function AdminDashboard() {
             <p className="text-[10px] text-cyan-500/70 uppercase tracking-[0.3em] font-bold">Management System</p>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/admin/dashboard">
+              <a className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="ホーム">
+                <Home className="h-5 w-5" />
+              </a>
+            </Link>
             <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="戻る">
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -67,7 +74,13 @@ export default function AdminDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {stats.map((stat, i) => (
-            <div key={i} className="bg-[#0f2847]/80 backdrop-blur-sm border border-cyan-500/20 rounded-2xl p-6 shadow-xl hover:border-cyan-500/50 transition-all group relative overflow-hidden">
+            <div 
+              key={i} 
+              onClick={() => {
+                setSelectedStat(stat.label);
+                setShowStatsModal(true);
+              }}
+              className="bg-[#0f2847]/80 backdrop-blur-sm border border-cyan-500/20 rounded-2xl p-6 shadow-xl hover:border-cyan-500/50 transition-all group relative overflow-hidden cursor-pointer">
               <div className="relative z-10">
                 <div className="text-2xl mb-4 bg-cyan-500/10 w-10 h-10 flex items-center justify-center rounded-lg group-hover:scale-110 transition-transform">{stat.icon}</div>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</p>
@@ -164,6 +177,30 @@ export default function AdminDashboard() {
         </div>
       </main>
       <Footer />
+
+      {/* Stats Modal */}
+      {showStatsModal && selectedStat && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-cyan-500/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400">{selectedStat}の詳細</h3>
+              <button
+                onClick={() => {
+                  setShowStatsModal(false);
+                  setSelectedStat(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-center py-8">
+              <p className="text-gray-400">現在、該当するデータがありません。</p>
+              <p className="text-gray-500 text-sm mt-2">案件や入札が登録されると、ここに表示されます。</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
