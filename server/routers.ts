@@ -10,6 +10,7 @@ import { adminRouter } from "./routers/admin";
 import { chatbotRouter } from "./routers/chatbot";
 import { errorFixRouter } from "./routers/error-fix";
 import { systemStatusRouter } from "./routers/system-status";
+import { autoFixRouter } from "./routers/auto-fix";
 
 // ==================== Validators ====================
 
@@ -294,6 +295,7 @@ export const appRouter = router({
   chatbot: chatbotRouter,
   errorFix: errorFixRouter,
   systemStatus: systemStatusRouter,
+  autoFix: autoFixRouter,
 });
 
 export type AppRouter = typeof appRouter;

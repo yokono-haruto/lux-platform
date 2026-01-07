@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Home, Activity } from "lucide-react";
+import { ArrowLeft, Home, Activity, Wrench } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { MessageBell } from "./MessageBell";
 
@@ -57,6 +57,11 @@ export function AdminHeader({ title = "LUX ADMIN", subtitle = "Management System
                   {actionRequiredCount}
                 </span>
               )}
+            </a>
+          </Link>
+          <Link href="/admin/error-fix">
+            <a className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="自動エラー修正">
+              <Wrench className="h-5 w-5" />
             </a>
           </Link>
           <NotificationBell />

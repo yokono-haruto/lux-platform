@@ -22,6 +22,7 @@ import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import NotificationDetail from "./pages/NotificationDetail";
 import TodayStatus from "./pages/TodayStatus";
+import ErrorFixManagement from "./pages/ErrorFixManagement";
 import { Chatbot } from "./components/Chatbot";
 
 function Router() {
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/settings" component={Settings} />
       <Route path="/notifications/:id" component={NotificationDetail} />
       <Route path="/today-status" component={TodayStatus} />
+      <Route path="/admin/error-fix" component={ErrorFixManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
