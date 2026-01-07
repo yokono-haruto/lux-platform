@@ -4,7 +4,8 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, ArrowLeft } from "lucide-react";
+import { MessageBell } from "@/components/MessageBell";
+import { ArrowLeft } from "lucide-react";
 import { Footer } from "@/components/Footer";
 
 export default function AdminDashboard() {
@@ -46,13 +47,7 @@ export default function AdminDashboard() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <NotificationBell />
-            <button 
-              onClick={() => navigate("/messages")}
-              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
-              title="メッセージ"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </button>
+            <MessageBell />
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-cyan-300">{user?.name}</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">System Administrator</p>

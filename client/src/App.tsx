@@ -17,6 +17,7 @@ import BidsManagement from "./pages/admin/BidsManagement";
 import BroadcastPage from "./pages/admin/BroadcastPage";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
+import NotificationDetail from "./pages/NotificationDetail";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/admin/broadcast" component={BroadcastPage} />
       <Route path="/messages" component={Messages} />
       <Route path="/settings" component={Settings} />
+      <Route path="/notifications/:id" component={NotificationDetail} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

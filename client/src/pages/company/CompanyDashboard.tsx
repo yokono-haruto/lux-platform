@@ -3,6 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { MessageBell } from "@/components/MessageBell";
 import { Footer } from "@/components/Footer";
 import { MessageSquare, TrendingUp, ShoppingCart, ArrowLeft, User } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
@@ -55,9 +56,7 @@ export default function CompanyDashboard() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <NotificationBell />
-            <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="メッセージ">
-              <MessageSquare className="h-5 w-5" />
-            </button>
+            <MessageBell />
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#00a3ff]/20 rounded-full flex items-center justify-center">
                 <User className="h-5 w-5 text-[#00a3ff]" />

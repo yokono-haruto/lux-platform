@@ -7,6 +7,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/NotificationBell";
+import { MessageBell } from "@/components/MessageBell";
 import { Footer } from "@/components/Footer";
 import { MessageSquare, TrendingUp, FileText, ArrowLeft, User } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
@@ -87,9 +88,7 @@ export default function SalesDashboard() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <NotificationBell />
-            <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="メッセージ">
-              <MessageSquare className="h-5 w-5" />
-            </button>
+            <MessageBell />
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
                 <User className="h-5 w-5 text-blue-400" />

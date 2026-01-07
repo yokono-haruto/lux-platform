@@ -225,6 +225,10 @@ const messagesRouter = router({
         appointmentId: input.appointmentId,
       });
     }),
+  unreadCount: protectedProcedure.query(async ({ ctx }) => {
+    const messages = await db.getUserMessages(ctx.user.id);
+    return messages.filter(m => m.receiverId === ctx.user.id && !m.isRead).length;
+  }),
 });
 
 const dashboardRouter = router({

@@ -259,7 +259,11 @@ export async function updateBidStatus(bidId: number, status: string) {
 export async function createNotification(data: InsertNotification): Promise<Notification> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(notifications).values(data);
+  const now = new Date();
+  const result = await db.insert(notifications).values({
+    ...data,
+    createdAt: now
+  });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(notifications).where(eq(notifications.id, id));
   return rows[0];
@@ -287,7 +291,11 @@ export async function markAllNotificationsAsRead(userId: number) {
 export async function createMessage(data: InsertMessage): Promise<Message> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(messages).values(data);
+  const now = new Date();
+  const result = await db.insert(messages).values({
+    ...data,
+    createdAt: now
+  });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(messages).where(eq(messages.id, id));
   return rows[0];

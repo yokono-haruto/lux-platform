@@ -153,14 +153,13 @@ export default function Messages() {
                     >
                       {msg.content}
                       <div className={`text-[10px] mt-1 ${msg.senderId === user.id ? "text-cyan-200" : "text-gray-500"}`}>
-                        {new Date(msg.createdAt).toLocaleString('ja-JP', { 
-                          year: 'numeric', 
-                          month: '2-digit', 
-                          day: '2-digit', 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          timeZone: 'Asia/Tokyo'
-                        })}
+                        {(() => {
+                          const d = new Date(msg.createdAt);
+                          if (isNaN(d.getTime()) || d.getFullYear() > 3000 || d.getFullYear() < 2000) {
+                            return new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+                          }
+                          return d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+                        })()}
                       </div>
                     </div>
                   ))}
