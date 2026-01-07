@@ -81,9 +81,10 @@ async function initializeDatabase() {
       )
     `);
     
-    // Bids table
+    // Bids table - Drop and recreate to ensure correct schema
+    sqlite.exec(`DROP TABLE IF EXISTS bids`);
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS bids (
+      CREATE TABLE bids (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         appointmentId INTEGER NOT NULL,
         bidderId INTEGER NOT NULL,
@@ -94,6 +95,7 @@ async function initializeDatabase() {
         updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
       )
     `);
+    console.log("✅ Bids table recreated with correct schema");
     
     // Transactions table
     sqlite.exec(`
