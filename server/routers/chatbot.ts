@@ -25,6 +25,26 @@ function checkRateLimit(userId: number): boolean {
   return true;
 }
 
+// よくある質問への定型回答
+const FAQ_RESPONSES: Record<string, string> = {
+  "案件": "案件の登録は、管理者ダッシュボードの「案件データ管理」から行えます。新規登録ボタンをクリックして、必要な情報を入力してください。",
+  "登録": "新規登録については、管理者にお問い合わせください。営業部隊や電力会社のアカウント発行は管理者が行います。",
+  "入札": "入札は電力会社アカウントでログイン後、公開中の案件一覧から行えます。案件詳細を確認し、入札金額を入力して送信してください。",
+  "ログイン": "ログインページでメールアドレスとパスワードを入力してください。パスワードを忘れた場合は管理者にお問い合わせください。",
+  "パスワード": "パスワードのリセットは管理者にお問い合わせください。セキュリティのため、本人確認が必要です。",
+  "使い方": "LUXプラットフォームは、営業部隊が案件を登録し、電力会社が入札するマッチングシステムです。詳細は管理者にお問い合わせください。",
+};
+
+function getFallbackResponse(message: string): string | null {
+  const lowerMessage = message.toLowerCase();
+  for (const [keyword, response] of Object.entries(FAQ_RESPONSES)) {
+    if (lowerMessage.includes(keyword)) {
+      return response;
+    }
+  }
+  return null;
+}
+
 export const chatbotRouter = router({
   chat: protectedProcedure
     .input(z.object({ message: z.string().min(1).max(500) }))
@@ -38,11 +58,17 @@ export const chatbotRouter = router({
       }
 
       const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+      
+      // APIキーがない場合はフォールバック応答を使用
       if (!GEMINI_API_KEY) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "チャットボット機能が利用できません。",
-        });
+        console.log("GEMINI_API_KEY not set, using fallback responses");
+        const fallback = getFallbackResponse(input.message);
+        if (fallback) {
+          return { reply: fallback };
+        }
+        return { 
+          reply: "申し訳ございません。現在AIサポートは利用できません。お問い合わせは管理者までご連絡ください。" 
+        };
       }
 
       try {
@@ -78,7 +104,16 @@ export const chatbotRouter = router({
         );
 
         if (!response.ok) {
-          throw new Error("Gemini API request failed");
+          const errorText = await response.text();
+          console.error("Gemini API error response:", response.status, errorText);
+          
+          // APIエラー時はフォールバック応答を使用
+          const fallback = getFallbackResponse(input.message);
+          if (fallback) {
+            return { reply: fallback };
+          }
+          
+          throw new Error(`Gemini API request failed: ${response.status}`);
         }
 
         const data = await response.json();
@@ -87,6 +122,13 @@ export const chatbotRouter = router({
         return { reply };
       } catch (error) {
         console.error("Gemini API error:", error);
+        
+        // エラー時はフォールバック応答を試みる
+        const fallback = getFallbackResponse(input.message);
+        if (fallback) {
+          return { reply: fallback };
+        }
+        
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "回答の生成中にエラーが発生しました。",
