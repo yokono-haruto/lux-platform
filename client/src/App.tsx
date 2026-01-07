@@ -16,6 +16,7 @@ import TransactionsManagement from "./pages/admin/TransactionsManagement";
 import BidsManagement from "./pages/admin/BidsManagement";
 import BroadcastPage from "./pages/admin/BroadcastPage";
 import Messages from "./pages/Messages";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/admin/bids" component={BidsManagement} />
       <Route path="/admin/broadcast" component={BroadcastPage} />
       <Route path="/messages" component={Messages} />
+      <Route path="/settings" component={Settings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

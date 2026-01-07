@@ -5,6 +5,7 @@ import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageSquare, ArrowLeft } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -32,7 +33,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a1628] text-white font-sans">
+    <div className="min-h-screen bg-[#0a1628] text-white flex flex-col font-sans">
       {/* Header */}
       <header className="border-b border-cyan-500/30 py-8 px-8 bg-gradient-to-r from-[#0a1628] to-[#0f2847] sticky top-0 z-50 backdrop-blur-md">
         <div className="container max-w-6xl mx-auto flex justify-between items-center">
@@ -167,6 +168,7 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

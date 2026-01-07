@@ -193,6 +193,28 @@ const messagesRouter = router({
   getConversation: protectedProcedure.input(z.number()).query(async ({ ctx, input }) => {
     return db.getConversation(ctx.user.id, input);
   }),
+  getAvailableUsers: protectedProcedure.query(async ({ ctx }) => {
+    const allUsers = await db.getAllUsers();
+    const currentUser = ctx.user;
+    
+    if (currentUser.role === "admin") {
+      // 管理者は全員と会話可能
+      return allUsers.filter(u => u.id !== currentUser.id && u.isActive).map(u => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        companyName: u.companyName,
+      }));
+    } else {
+      // 営業部隊・電力会社は管理者のみ
+      return allUsers.filter(u => u.role === "admin" && u.isActive).map(u => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        companyName: u.companyName,
+      }));
+    }
+  }),
   send: protectedProcedure
     .input(z.object({ receiverId: z.number(), content: z.string(), appointmentId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {

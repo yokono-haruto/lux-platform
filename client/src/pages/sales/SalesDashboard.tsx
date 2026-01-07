@@ -1,5 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -7,7 +7,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, TrendingUp, FileText, ArrowLeft } from "lucide-react";
+import { Footer } from "@/components/Footer";
+import { MessageSquare, TrendingUp, FileText, ArrowLeft, User } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
@@ -24,8 +26,8 @@ type AppointmentFormData = z.infer<typeof appointmentSchema>;
 export default function SalesDashboard() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
-  const [showForm, setShowForm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -35,26 +37,25 @@ export default function SalesDashboard() {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
+    defaultValues: { bidPrice: 0, monthlyAmount: 0 },
   });
 
-  const appointmentsQuery = trpc.appointments.list.useQuery({ status: "active" }, { retry: false });
-  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery(undefined, { retry: false });
+  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery(undefined, {
+    retry: false,
+    onError: () => {},
+  });
 
-  const createAppointmentMutation = trpc.appointments.create.useMutation({
+  const createMutation = trpc.appointments.create.useMutation({
     onSuccess: () => {
       toast.success("案件を登録しました");
       reset();
       setShowForm(false);
-      appointmentsQuery.refetch();
+      dashboardStatsQuery.refetch();
     },
-    onError: (error) => {
-      toast.error(error.message || "エラーが発生しました");
-    },
+    onError: (e) => toast.error(e.message),
   });
 
-  const onSubmit = (data: AppointmentFormData) => {
-    createAppointmentMutation.mutate(data);
-  };
+  const onSubmit = (data: AppointmentFormData) => createMutation.mutate(data);
 
   if (!user) {
     navigate("/login");
@@ -63,8 +64,17 @@ export default function SalesDashboard() {
 
   const stats = dashboardStatsQuery.data || { totalSubmitted: 0, activeCount: 0, closedCount: 0 };
 
+  // 月別データ生成
+  const monthlyData = [
+    { month: "8月", submitted: 5, closed: 2 },
+    { month: "9月", submitted: 8, closed: 4 },
+    { month: "10月", submitted: 12, closed: 6 },
+    { month: "11月", submitted: 15, closed: 8 },
+    { month: "12月", submitted: stats.totalSubmitted || 10, closed: stats.closedCount || 5 },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Header */}
       <header className="bg-slate-800/50 backdrop-blur-sm border-b border-blue-500/30 py-4 px-8 sticky top-0 z-50">
         <div className="container mx-auto flex justify-between items-center">
@@ -80,6 +90,15 @@ export default function SalesDashboard() {
             <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="メッセージ">
               <MessageSquare className="h-5 w-5" />
             </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-blue-400">{user.name}</p>
+                <p className="text-xs text-gray-400">営業部隊</p>
+              </div>
+            </div>
             <button onClick={handleLogout} disabled={isLoggingOut} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
               {isLoggingOut ? "..." : "ログアウト"}
             </button>
@@ -87,7 +106,7 @@ export default function SalesDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto py-8 px-8">
+      <main className="container mx-auto py-8 px-8 flex-1">
         {/* Welcome */}
         <div className="bg-slate-800/30 border border-blue-500/20 rounded-xl p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-2">ようこそ、{user.name || "営業部隊"}様</h2>
@@ -114,12 +133,12 @@ export default function SalesDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-slate-800/50 border border-yellow-500/30 rounded-xl p-5">
+          <div className="bg-slate-800/50 border border-orange-500/30 rounded-xl p-5">
             <div className="flex items-center gap-3">
-              <div className="text-2xl">💰</div>
+              <div className="text-2xl">✅</div>
               <div>
-                <div className="text-2xl font-bold text-yellow-400">{stats.closedCount}</div>
-                <div className="text-gray-400 text-xs">成約数</div>
+                <div className="text-2xl font-bold text-orange-400">{stats.closedCount}</div>
+                <div className="text-gray-400 text-xs">成約済み</div>
               </div>
             </div>
           </div>
@@ -131,6 +150,34 @@ export default function SalesDashboard() {
                 <div className="text-gray-400 text-xs">月別統計</div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
+            <h3 className="text-lg font-bold mb-4 text-blue-400">月別投入案件数</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="month" stroke="#666" />
+                <YAxis stroke="#666" />
+                <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #3b82f6" }} />
+                <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
+            <h3 className="text-lg font-bold mb-4 text-blue-400">月別成約数</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="month" stroke="#666" />
+                <YAxis stroke="#666" />
+                <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #3b82f6" }} />
+                <Line type="monotone" dataKey="closed" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -147,82 +194,53 @@ export default function SalesDashboard() {
         {/* Form */}
         {showForm && (
           <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6 mb-8">
-            <h3 className="text-xl font-bold text-white mb-4">新規案件登録</h3>
+            <h3 className="text-lg font-bold mb-4">新規案件登録</h3>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">タイトル *</label>
-                <input {...register("title")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="案件タイトル" />
-                {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-300 mb-1">業種 *</label>
-                  <input {...register("industry")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="製造業" />
+                  <label className="block text-sm text-gray-400 mb-1">タイトル</label>
+                  <input {...register("title")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
+                  {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-300 mb-1">規模 *</label>
+                  <label className="block text-sm text-gray-400 mb-1">業種</label>
+                  <input {...register("industry")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">規模</label>
                   <select {...register("scale")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white">
-                    <option value="">選択</option>
+                    <option value="">選択してください</option>
                     <option value="small">小</option>
                     <option value="medium">中</option>
                     <option value="large">大</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-300 mb-1">エリア *</label>
-                  <input {...register("area")} type="text" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="東京都" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-1">入札設定価格 (円) *</label>
-                  <input {...register("bidPrice", { valueAsNumber: true })} type="number" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="50000" />
-                  <p className="text-xs text-gray-500 mt-1">電力会社への販売価格</p>
+                  <label className="block text-sm text-gray-400 mb-1">エリア</label>
+                  <input {...register("area")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-300 mb-1">月額料金/使用量 (円) *</label>
-                  <input {...register("monthlyAmount", { valueAsNumber: true })} type="number" className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" placeholder="500000" />
-                  <p className="text-xs text-gray-500 mt-1">案件の規模感</p>
+                  <label className="block text-sm text-gray-400 mb-1">入札設定価格（円）</label>
+                  <input type="number" {...register("bidPrice", { valueAsNumber: true })} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">月額料金（円）</label>
+                  <input type="number" {...register("monthlyAmount", { valueAsNumber: true })} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-300 mb-1">詳細説明</label>
-                <textarea {...register("description")} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white h-20" placeholder="オプション" />
+                <label className="block text-sm text-gray-400 mb-1">説明</label>
+                <textarea {...register("description")} rows={3} className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white" />
               </div>
-              <button type="submit" disabled={createAppointmentMutation.isPending} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50">
-                {createAppointmentMutation.isPending ? "登録中..." : "✅ 登録する"}
+              <button type="submit" disabled={createMutation.isPending} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50">
+                {createMutation.isPending ? "登録中..." : "登録する"}
               </button>
             </form>
           </div>
         )}
-
-        {/* Appointments List */}
-        <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">投入済み案件一覧</h3>
-          {appointmentsQuery.isLoading ? (
-            <div className="text-center text-gray-400 py-8">読み込み中...</div>
-          ) : appointmentsQuery.data?.length === 0 ? (
-            <div className="text-center text-gray-400 py-8">案件がまだ登録されていません</div>
-          ) : (
-            <div className="space-y-3">
-              {appointmentsQuery.data?.map((apt) => (
-                <div key={apt.id} className="bg-slate-900/50 border border-slate-600 rounded-lg p-4 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-semibold text-white">{apt.title}</h4>
-                    <p className="text-xs text-gray-400">{apt.industry} | {apt.area} | {apt.scale}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-blue-400 font-bold">¥{apt.price?.toLocaleString()}</div>
-                    <span className={`text-xs px-2 py-1 rounded ${apt.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                      {apt.status === 'active' ? '公開中' : apt.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

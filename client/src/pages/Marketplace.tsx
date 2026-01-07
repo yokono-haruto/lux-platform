@@ -8,7 +8,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AIPricePrediction } from "@/components/AIPricePrediction";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, ArrowLeft, Home } from "lucide-react";
 
 const bidSchema = z.object({
   bidAmount: z.number().positive("金額は正の数値である必要があります"),
@@ -92,6 +92,9 @@ export default function Marketplace() {
             <p className="text-sm text-gray-400">アポイント取引プラットフォーム</p>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="戻る">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <NotificationBell />
             <button 
               onClick={() => navigate("/messages")}

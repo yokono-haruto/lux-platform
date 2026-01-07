@@ -10,7 +10,7 @@ const loginSchema = z.object({
 });
 
 const changePasswordSchema = z.object({
-  oldPassword: z.string().min(6),
+  currentPassword: z.string().min(1),
   newPassword: z.string().min(6),
 });
 
@@ -154,7 +154,7 @@ export const authRouter = router({
     .mutation(async ({ ctx, input }) => {
       const success = await authService.changePassword(
         ctx.user.id,
-        input.oldPassword,
+        input.currentPassword,
         input.newPassword
       );
 
