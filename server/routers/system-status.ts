@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import * as db from "../db";
+import { getDb } from "../db";
 import { appointments, bids, users } from "../../drizzle/schema";
 import { eq, sql, and, gte } from "drizzle-orm";
 
@@ -20,6 +20,14 @@ export const systemStatusRouter = router({
       today.setHours(0, 0, 0, 0);
 
       // 本日の新規案件数
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "データベースに接続できません。",
+        });
+      }
+
       const newAppointmentsToday = await db
         .select({ count: sql<number>`count(*)` })
         .from(appointments)
