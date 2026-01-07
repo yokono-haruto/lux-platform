@@ -9,6 +9,7 @@ import { authRouter } from "./routers/auth";
 import { adminRouter } from "./routers/admin";
 import { chatbotRouter } from "./routers/chatbot";
 import { errorFixRouter } from "./routers/error-fix";
+import { systemStatusRouter } from "./routers/system-status";
 
 // ==================== Validators ====================
 
@@ -292,6 +293,7 @@ export const appRouter = router({
   ai: aiRouter,
   chatbot: chatbotRouter,
   errorFix: errorFixRouter,
+  systemStatus: systemStatusRouter,
 });
 
 export type AppRouter = typeof appRouter;

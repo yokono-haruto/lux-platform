@@ -5,7 +5,7 @@ import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageBell } from "@/components/MessageBell";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home, Activity } from "lucide-react";
 import { Footer } from "@/components/Footer";
 
 export default function AdminDashboard() {
@@ -27,6 +27,10 @@ export default function AdminDashboard() {
   }
 
   const dashboardStatsQuery = trpc.dashboard.stats.useQuery();
+  const systemStatusQuery = trpc.systemStatus.getTodayStatus.useQuery();
+
+  // 対応が必要な事項の数を計算
+  const actionRequiredCount = systemStatusQuery.data?.issues?.filter(issue => issue.actionRequired).length || 0;
 
   const stats = [
     { label: "登録案件数", value: dashboardStatsQuery.data?.totalAppointments || 0, icon: "📊" },
@@ -53,6 +57,16 @@ export default function AdminDashboard() {
             <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="戻る">
               <ArrowLeft className="h-5 w-5" />
             </button>
+            <Link href="/today-status">
+              <a className="relative p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="今日の状況">
+                <Activity className="h-5 w-5" />
+                {actionRequiredCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {actionRequiredCount}
+                  </span>
+                )}
+              </a>
+            </Link>
             <NotificationBell />
             <MessageBell />
             <div className="text-right hidden sm:block">
