@@ -31,14 +31,14 @@ export const systemStatusRouter = router({
       const newAppointmentsToday = await db
         .select({ count: sql<number>`count(*)` })
         .from(appointments)
-        .where(gte(appointments.createdAt, today.toISOString()))
+        .where(gte(appointments.createdAt, today))
         .then((rows) => rows[0]?.count || 0);
 
       // 本日の新規入札数
       const newBidsToday = await db
         .select({ count: sql<number>`count(*)` })
         .from(bids)
-        .where(gte(bids.createdAt, today.toISOString()))
+        .where(gte(bids.createdAt, today))
         .then((rows) => rows[0]?.count || 0);
 
       // 承認待ち案件数
