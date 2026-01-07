@@ -12,7 +12,8 @@ const appointmentSchema = z.object({
   industry: z.string().min(1, "業種は必須です"),
   scale: z.string().min(1, "規模は必須です"),
   area: z.string().min(1, "エリアは必須です"),
-  price: z.number().min(0, "価格は0以上である必要があります"),
+  bidPrice: z.number().min(0, "入札設定価格は0以上である必要があります"),
+  monthlyAmount: z.number().min(0, "月額料金は0以上である必要があります"),
   description: z.string().optional(),
 });
 
@@ -235,17 +236,34 @@ export default function SalesDashboard() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">価格 (円) *</label>
-                  <input
-                    {...register("price", { valueAsNumber: true })}
-                    type="number"
-                    className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                    placeholder="例: 1000000"
-                  />
-                  {errors.price && (
-                    <p className="text-red-400 text-sm mt-1">{errors.price.message}</p>
-                  )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">入札設定価格 (円) *</label>
+                    <input
+                      {...register("bidPrice", { valueAsNumber: true })}
+                      type="number"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                      placeholder="例: 50000"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">電力会社への販売価格</p>
+                    {errors.bidPrice && (
+                      <p className="text-red-400 text-sm mt-1">{errors.bidPrice.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">月額料金/使用量 (円) *</label>
+                    <input
+                      {...register("monthlyAmount", { valueAsNumber: true })}
+                      type="number"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                      placeholder="例: 500000"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">案件の規模感（現在の月額料金）</p>
+                    {errors.monthlyAmount && (
+                      <p className="text-red-400 text-sm mt-1">{errors.monthlyAmount.message}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>

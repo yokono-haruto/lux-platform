@@ -15,7 +15,8 @@ const appointmentSchema = z.object({
   industry: z.string().min(1),
   scale: z.string().min(1),
   area: z.string().min(1),
-  price: z.number().int().positive("価格は1円以上である必要があります"),
+  bidPrice: z.number().int().min(0, "入札設定価格は0以上である必要があります"),
+  monthlyAmount: z.number().int().min(0, "月額料金は0以上である必要があります"),
   description: z.string().optional(),
   status: z.string().optional(),
 });
@@ -51,7 +52,8 @@ const appointmentsRouter = router({
         industry: input.industry,
         scale: input.scale,
         area: input.area,
-        price: input.price,
+        price: input.bidPrice,
+        monthlyAmount: input.monthlyAmount,
         description: input.description,
       });
       return appointment;

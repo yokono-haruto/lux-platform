@@ -28,7 +28,8 @@ export const appointments = sqliteTable("appointments", {
   industry: text("industry").notNull(),
   scale: text("scale").notNull(),
   area: text("area").notNull(),
-  price: integer("price").default(0).notNull(), // アポイント価格を追加
+  price: integer("price").default(0).notNull(), // 入札設定価格
+  monthlyAmount: integer("monthlyAmount").default(0).notNull(), // 月額料金/使用量
   description: text("description"),
   status: text("status").default("active").notNull(),
   createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
