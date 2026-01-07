@@ -1,23 +1,40 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { MessageCircle, X, Send } from "lucide-react";
+import { toast } from "sonner";
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "bot"; text: string }>>([]);
+  const [lastRequestTime, setLastRequestTime] = useState<number>(0);
+  const [requestCount, setRequestCount] = useState<number>(0);
 
   const chatMutation = trpc.chatbot.chat.useMutation({
     onSuccess: (data) => {
       setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
     },
     onError: (error) => {
-      setMessages((prev) => [...prev, { role: "bot", text: error.message }]);
+      setMessages((prev) => [...prev, { role: "bot", text: "エラーが発生しました。もう一度お試しください。" }]);
+      toast.error(error.message || "エラーが発生しました");
     },
   });
 
   const handleSend = () => {
     if (!message.trim() || chatMutation.isPending) return;
+
+    // レート制限: 1分間に3回まで
+    const now = Date.now();
+    if (now - lastRequestTime < 60000) {
+      if (requestCount >= 3) {
+        toast.error("質問は1分間に3回までです。少し待ってから再度お試しください。");
+        return;
+      }
+      setRequestCount(requestCount + 1);
+    } else {
+      setLastRequestTime(now);
+      setRequestCount(1);
+    }
 
     setMessages((prev) => [...prev, { role: "user", text: message }]);
     chatMutation.mutate({ message });

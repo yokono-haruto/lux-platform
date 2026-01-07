@@ -1,5 +1,6 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { db } from "../../drizzle/db";
 import { appointments, bids, users } from "../../drizzle/schema";
 import { eq, sql, and, gte } from "drizzle-orm";
@@ -62,9 +63,12 @@ export const systemStatusRouter = router({
       // システムの健全性を判定
       let systemHealth: "healthy" | "warning" | "critical" = "healthy";
       const issues: Array<{
+        id: string;
         severity: "info" | "warning" | "critical";
         title: string;
         description: string;
+        impact: string;
+        status: string;
         actionRequired: boolean;
       }> = [];
 
@@ -72,16 +76,22 @@ export const systemStatusRouter = router({
       if (pendingAppointments > 5) {
         systemHealth = "warning";
         issues.push({
+          id: "pending-appointments-high",
           severity: "warning",
           title: "承認待ちの案件が増えています",
           description: `現在${pendingAppointments}件の案件が承認待ちです。早めの確認をお勧めします。`,
+          impact: "案件の公開が遅れる可能性があります",
+          status: "対応待ち",
           actionRequired: true,
         });
       } else if (pendingAppointments > 0) {
         issues.push({
+          id: "pending-appointments",
           severity: "info",
           title: "承認待ちの案件があります",
           description: `${pendingAppointments}件の案件が承認待ちです。`,
+          impact: "通常範囲内",
+          status: "確認推奨",
           actionRequired: true,
         });
       }
@@ -89,9 +99,12 @@ export const systemStatusRouter = router({
       // 本日の活動状況
       if (newAppointmentsToday > 0 || newBidsToday > 0) {
         issues.push({
+          id: "daily-activity",
           severity: "info",
           title: "本日の新規活動",
           description: `新規案件：${newAppointmentsToday}件、新規入札：${newBidsToday}件`,
+          impact: "なし",
+          status: "情報のみ",
           actionRequired: false,
         });
       }
@@ -117,4 +130,25 @@ export const systemStatusRouter = router({
       });
     }
   }),
+
+  approveIssue: protectedProcedure
+    .input(z.object({ issueId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // 管理者のみアクセス可能
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "この機能は管理者のみ利用できます。",
+        });
+      }
+
+      // 実際の承認処理をここに実装
+      // 例: データベースに承認状況を記録
+      console.log(`Issue ${input.issueId} approved by ${ctx.user.email}`);
+      
+      return {
+        success: true,
+        message: "承認しました",
+      };
+    }),
 });

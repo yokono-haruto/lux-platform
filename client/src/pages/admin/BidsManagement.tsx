@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
-import { Home, ArrowLeft, Check, X, Clock } from "lucide-react";
+import { Check, X, Clock } from "lucide-react";
+import { AdminHeader } from "@/components/AdminHeader";
 import { toast } from "sonner";
 
 export default function BidsManagement() {
@@ -33,22 +34,7 @@ export default function BidsManagement() {
 
   return (
     <div className="min-h-screen bg-[#0a1628] text-white">
-      <header className="border-b border-cyan-500/30 py-4 px-8 bg-[#0f2847] sticky top-0 z-50">
-        <div className="container max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/admin/dashboard")} className="p-2 text-gray-400 hover:text-cyan-400">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-cyan-400">入札対応管理</h1>
-              <p className="text-xs text-gray-400">Bid Management</p>
-            </div>
-          </div>
-          <button onClick={() => navigate("/")} className="p-2 text-gray-400 hover:text-green-400">
-            <Home className="h-5 w-5" />
-          </button>
-        </div>
-      </header>
+      <AdminHeader title="入札対応管理" subtitle="Bid Management" />
 
       <main className="container max-w-6xl mx-auto py-8 px-8">
         {/* Filter Tabs */}

@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
+import { AdminHeader } from "@/components/AdminHeader";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 
@@ -47,31 +48,7 @@ export default function TransactionsManagement() {
 
   return (
     <div className="min-h-screen bg-[#0a1628] text-white font-sans">
-      {/* Header */}
-      <header className="border-b border-cyan-500/30 py-8 px-8 bg-gradient-to-r from-[#0a1628] to-[#0f2847] sticky top-0 z-50 backdrop-blur-md">
-        <div className="container max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-6">
-            <Link href="/admin/dashboard">
-              <a className="text-cyan-400 hover:text-cyan-300 transition-colors">
-                <span className="text-2xl">←</span>
-              </a>
-            </Link>
-            <div>
-              <h1 className="text-4xl font-black text-cyan-400 tracking-tighter mb-1">取引・請求管理</h1>
-              <p className="text-[10px] text-cyan-500/70 uppercase tracking-[0.3em] font-bold">Transaction Management</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-cyan-300">{user?.name}</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">System Administrator</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/10">
-              🛡️
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminHeader title="取引・請求管理" subtitle="Transaction Management" />
 
       <main className="container max-w-7xl mx-auto py-12 px-8">
         {/* Stats Grid */}

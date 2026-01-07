@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
-import { Home, ArrowLeft, Send } from "lucide-react";
+import { Send } from "lucide-react";
+import { AdminHeader } from "@/components/AdminHeader";
 import { toast } from "sonner";
 
 export default function BroadcastPage() {
@@ -37,22 +38,7 @@ export default function BroadcastPage() {
 
   return (
     <div className="min-h-screen bg-[#0a1628] text-white">
-      <header className="border-b border-cyan-500/30 py-4 px-8 bg-[#0f2847] sticky top-0 z-50">
-        <div className="container max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/admin/dashboard")} className="p-2 text-gray-400 hover:text-cyan-400">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-cyan-400">一斉周知</h1>
-              <p className="text-xs text-gray-400">Broadcast Notification</p>
-            </div>
-          </div>
-          <button onClick={() => navigate("/")} className="p-2 text-gray-400 hover:text-green-400">
-            <Home className="h-5 w-5" />
-          </button>
-        </div>
-      </header>
+      <AdminHeader title="一齐周知" subtitle="Broadcast Notification" />
 
       <main className="container max-w-4xl mx-auto py-8 px-8">
         <div className="bg-[#0f2847] border border-cyan-500/20 rounded-xl p-8">
