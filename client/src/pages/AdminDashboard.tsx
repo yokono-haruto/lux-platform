@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Home } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -45,8 +45,16 @@ export default function AdminDashboard() {
             <button 
               onClick={() => navigate("/messages")}
               className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
+              title="メッセージ"
             >
               <MessageSquare className="h-5 w-5" />
+            </button>
+            <button 
+              onClick={() => navigate("/")}
+              className="p-2 text-gray-300 hover:text-green-400 transition-colors"
+              title="ホームに戻る"
+            >
+              <Home className="h-5 w-5" />
             </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-cyan-300">{user?.name}</p>
@@ -91,7 +99,7 @@ export default function AdminDashboard() {
           <h2 className="text-3xl font-black text-white tracking-tight">クイックメニュー</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {/* 案件管理 */}
           <Link href="/admin/appointments">
             <a className="group bg-[#0f2847] border border-cyan-500/20 rounded-2xl p-8 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all shadow-xl flex flex-col h-full">

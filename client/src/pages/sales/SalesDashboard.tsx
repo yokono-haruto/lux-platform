@@ -135,15 +135,12 @@ export default function SalesDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
             <span className="text-xl">📝</span> {showForm ? "フォームを閉じる" : "新規案件を投入"}
           </button>
           <button onClick={() => navigate("/messages")} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
             <MessageSquare className="h-5 w-5" /> 管理者にメッセージ
-          </button>
-          <button onClick={() => navigate("/")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
-            <Home className="h-5 w-5" /> ホームに戻る
           </button>
         </div>
 

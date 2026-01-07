@@ -104,15 +104,12 @@ export default function CompanyDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <button onClick={() => navigate("/marketplace")} className="bg-[#00a3ff] hover:bg-[#0088cc] text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
             <span className="text-xl">🔍</span> 案件を探す
           </button>
           <button onClick={() => navigate("/messages")} className="bg-[#001529] border border-[#003a70] hover:border-[#00a3ff] text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
             <MessageSquare className="h-5 w-5" /> メッセージ
-          </button>
-          <button onClick={() => navigate("/")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
-            <Home className="h-5 w-5" /> ホームに戻る
           </button>
         </div>
 
