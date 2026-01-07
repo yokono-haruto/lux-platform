@@ -2,6 +2,91 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+// フォールバック応答（Gemini APIが利用できない場合）
+function getFallbackAnalysis(errorLog: string, stackTrace: string): {
+  analysis: string;
+  fixCode: string;
+  filePath: string;
+  severity: "low" | "medium" | "high";
+} {
+  // よくあるエラーパターンを分析
+  const errorPatterns = [
+    {
+      pattern: /Cannot read properties of undefined \(reading '(\w+)'\)/i,
+      analysis: (match: RegExpMatchArray) => 
+        `オブジェクトが undefined の状態で '${match[1]}' プロパティにアクセスしようとしています。データの取得前にnullチェックを追加するか、オプショナルチェーン(?.)を使用してください。`,
+      severity: "medium" as const,
+    },
+    {
+      pattern: /Cannot read properties of null/i,
+      analysis: () => 
+        "オブジェクトが null の状態でプロパティにアクセスしようとしています。nullチェックを追加してください。",
+      severity: "medium" as const,
+    },
+    {
+      pattern: /is not a function/i,
+      analysis: () => 
+        "関数として呼び出そうとしているものが関数ではありません。変数の型や初期化を確認してください。",
+      severity: "high" as const,
+    },
+    {
+      pattern: /Network Error|Failed to fetch/i,
+      analysis: () => 
+        "ネットワークエラーが発生しています。APIエンドポイントの可用性とCORS設定を確認してください。",
+      severity: "high" as const,
+    },
+    {
+      pattern: /no such column/i,
+      analysis: () => 
+        "データベースに指定されたカラムが存在しません。スキーマとクエリを確認してください。",
+      severity: "high" as const,
+    },
+    {
+      pattern: /UNIQUE constraint failed/i,
+      analysis: () => 
+        "一意制約違反です。重複するデータを挿入しようとしています。",
+      severity: "medium" as const,
+    },
+  ];
+
+  // ファイルパスを抽出
+  const filePathMatch = stackTrace.match(/at\s+\w+\s+\(([^:]+\.tsx?)/);
+  const filePath = filePathMatch 
+    ? `/home/ubuntu/lux-platform/client/src/${filePathMatch[1]}`
+    : "/home/ubuntu/lux-platform/client/src/App.tsx";
+
+  // エラーパターンをマッチング
+  for (const { pattern, analysis, severity } of errorPatterns) {
+    const match = errorLog.match(pattern);
+    if (match) {
+      return {
+        analysis: typeof analysis === "function" ? analysis(match) : analysis,
+        fixCode: `// 自動修正コードは生成できませんでした。
+// 以下のガイダンスに従って手動で修正してください。
+// 
+// 推奨される修正方法:
+// 1. 該当箇所でnullチェックを追加
+// 2. オプショナルチェーン(?.)を使用
+// 3. デフォルト値を設定
+// 
+// 例:
+// const data = response?.data ?? [];
+// if (data && data.length > 0) { ... }`,
+        filePath,
+        severity,
+      };
+    }
+  }
+
+  // デフォルトの応答
+  return {
+    analysis: "エラーの詳細な分析には追加情報が必要です。スタックトレースを確認し、該当するコードを見直してください。",
+    fixCode: "",
+    filePath,
+    severity: "medium",
+  };
+}
+
 // Gemini APIクライアント
 async function analyzeErrorWithGemini(errorLog: string, stackTrace: string): Promise<{
   analysis: string;
@@ -12,7 +97,8 @@ async function analyzeErrorWithGemini(errorLog: string, stackTrace: string): Pro
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   
   if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set");
+    console.log("GEMINI_API_KEY is not set, using fallback analysis");
+    return getFallbackAnalysis(errorLog, stackTrace);
   }
 
   const prompt = `あなたはシステムエラーを分析して修正案を提案するエキスパートです。
@@ -39,49 +125,73 @@ ${stackTrace}
 - 修正が不可能な場合は、fixCodeを空文字列にしてください`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
+    // 複数のモデルを試す
+    const models = [
+      "gemini-2.0-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-pro"
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
                 {
-                  text: prompt,
+                  parts: [
+                    {
+                      text: prompt,
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8000,
-          },
-        }),
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 8000,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.log(`Model ${model} failed: ${response.status} - ${errorText}`);
+          lastError = new Error(`Gemini API error: ${response.statusText}`);
+          continue;
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
+        // JSONを抽出（```json ... ``` の中身を取得）
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("Failed to parse Gemini response");
+        }
+
+        const result = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        return result;
+      } catch (modelError) {
+        console.log(`Model ${model} error:`, modelError);
+        lastError = modelError as Error;
+        continue;
       }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    
-    // JSONを抽出（```json ... ``` の中身を取得）
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Failed to parse Gemini response");
-    }
-
-    const result = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-    return result;
+    // すべてのモデルが失敗した場合、フォールバックを使用
+    console.log("All Gemini models failed, using fallback analysis");
+    return getFallbackAnalysis(errorLog, stackTrace);
   } catch (error) {
     console.error("Gemini API error:", error);
-    throw error;
+    return getFallbackAnalysis(errorLog, stackTrace);
   }
 }
 
