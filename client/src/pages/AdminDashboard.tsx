@@ -189,6 +189,20 @@ export default function AdminDashboard() {
               </div>
             </a>
           </Link>
+
+          {/* AI自動エラー修正 */}
+          <Link href="/admin/error-fix">
+            <a className="group bg-[#0f2847] border border-red-500/20 rounded-2xl p-8 hover:bg-red-500/10 hover:border-red-400 transition-all shadow-xl flex flex-col h-full">
+              <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-red-500/20">🤖</div>
+              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-red-300 transition-colors">AI自動エラー修正</h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
+                AIがエラーを分析し、自動的に修正案を生成します。
+              </p>
+              <div className="flex items-center text-red-400 font-bold text-sm pt-6 border-t border-red-500/10">
+                修正画面を開く <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+              </div>
+            </a>
+          </Link>
         </div>
       </main>
       <Footer />

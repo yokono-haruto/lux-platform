@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -7,18 +7,19 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { AlertTriangle, CheckCircle, Code, FileCode, Loader } from "lucide-react";
 
 export default function ErrorFixManagement() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
   const [errorLog, setErrorLog] = useState("");
   const [stackTrace, setStackTrace] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [fixResult, setFixResult] = useState<any>(null);
 
-  // 管理者以外はアクセス不可
-  if (user?.role !== "admin") {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    // ローディング完了後に管理者でなければリダイレクト
+    if (!isLoading && user?.role !== "admin") {
+      navigate("/");
+    }
+  }, [user, isLoading, navigate]);
 
   const analyzeErrorMutation = trpc.autoFix.analyzeError.useMutation({
     onSuccess: (data) => {
@@ -81,6 +82,20 @@ export default function ErrorFixManagement() {
         return "text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
   };
+
+  // ローディング中はローディング表示
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a1628] text-white flex items-center justify-center">
+        <Loader className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  // 管理者でなければ何も表示しない（useEffectでリダイレクト）
+  if (user?.role !== "admin") {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#0a1628] text-white">
