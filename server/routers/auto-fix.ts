@@ -127,9 +127,9 @@ ${stackTrace}
   try {
     // 複数のモデルを試す
     const models = [
-      "gemini-2.0-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-pro"
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+      "gemini-2.0-flash-exp"
     ];
 
     let lastError: Error | null = null;
