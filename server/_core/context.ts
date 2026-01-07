@@ -36,6 +36,19 @@ export async function createContext(
           return { req: opts.req, res: opts.res, user };
         }
       }
+      
+      // ユーザーセッションのチェック
+      if (session.startsWith("user-session-")) {
+        const userIdStr = session.replace("user-session-", "");
+        const userId = parseInt(userIdStr);
+        
+        if (!isNaN(userId)) {
+          user = await db.getUserById(userId);
+          if (user) {
+            return { req: opts.req, res: opts.res, user };
+          }
+        }
+      }
     }
   }
 
