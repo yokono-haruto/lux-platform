@@ -18,6 +18,7 @@ import BroadcastPage from "./pages/admin/BroadcastPage";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import NotificationDetail from "./pages/NotificationDetail";
+import { Chatbot } from "./components/Chatbot";
 
 function Router() {
   return (
@@ -57,6 +58,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <Chatbot />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { notifyNewBid } from "./notification";
 import { authRouter } from "./routers/auth";
 import { adminRouter } from "./routers/admin";
+import { chatbotRouter } from "./routers/chatbot";
 
 // ==================== Validators ====================
 
@@ -288,6 +289,7 @@ export const appRouter = router({
   messages: messagesRouter,
   dashboard: dashboardRouter,
   ai: aiRouter,
+  chatbot: chatbotRouter,
 });
 
 export type AppRouter = typeof appRouter;
