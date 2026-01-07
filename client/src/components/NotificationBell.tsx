@@ -66,7 +66,14 @@ export function NotificationBell() {
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-bold text-sm">{n.title}</span>
                     <span className="text-[10px] text-gray-400">
-                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: ja })}
+                      {new Date(n.createdAt).toLocaleString('ja-JP', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        timeZone: 'Asia/Tokyo'
+                      })}
                     </span>
                   </div>
                   <p className="text-xs text-gray-300 mb-2">{n.content}</p>
