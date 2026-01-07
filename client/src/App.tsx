@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import UserManagement from "./pages/UserManagement";
 import AppointmentManagement from "./pages/AppointmentManagement";
 import TransactionsManagement from "./pages/admin/TransactionsManagement";
+import Messages from "./pages/Messages";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/admin/users" component={UserManagement} />
       <Route path="/admin/appointments" component={AppointmentManagement} />
       <Route path="/admin/transactions" component={TransactionsManagement} />
+      <Route path="/messages" component={Messages} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

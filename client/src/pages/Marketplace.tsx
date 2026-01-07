@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AIPricePrediction } from "@/components/AIPricePrediction";
+import { NotificationBell } from "@/components/NotificationBell";
+import { MessageSquare } from "lucide-react";
 
 const bidSchema = z.object({
   bidAmount: z.number().positive("金額は正の数値である必要があります"),
@@ -28,11 +31,21 @@ export default function Marketplace() {
     industry: "",
     scale: "",
     area: "",
+    search: "",
+    minPrice: undefined as number | undefined,
+    maxPrice: undefined as number | undefined,
   });
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [showBidForm, setShowBidForm] = useState(false);
 
-  const appointmentsQuery = trpc.appointments.list.useQuery(filters);
+  const appointmentsQuery = trpc.appointments.list.useQuery({
+    industry: filters.industry || undefined,
+    scale: filters.scale || undefined,
+    area: filters.area || undefined,
+    search: filters.search || undefined,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+  });
   const userBidsQuery = trpc.bids.getByUser.useQuery();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<BidFormData>({
@@ -79,6 +92,13 @@ export default function Marketplace() {
             <p className="text-sm text-gray-400">アポイント取引プラットフォーム</p>
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell />
+            <button 
+              onClick={() => navigate("/messages")}
+              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </button>
             <div className="text-sm text-right">
               <p className="font-bold text-cyan-300">{user.name}</p>
               <p className="text-gray-400">{user.companyName}</p>
@@ -97,6 +117,18 @@ export default function Marketplace() {
       {/* Filters */}
       <section className="py-8 px-8 border-b border-cyan-500/20 bg-[#0f2847]/50">
         <div className="container max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="md:col-span-3">
+              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">キーワード検索</label>
+              <input
+                type="text"
+                className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
+                placeholder="案件タイトルで検索..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
               <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">業種</label>
@@ -109,31 +141,28 @@ export default function Marketplace() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">規模</label>
-              <select
+              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">価格範囲 (最小)</label>
+              <input
+                type="number"
                 className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                value={filters.scale}
-                onChange={(e) => setFilters({ ...filters, scale: e.target.value })}
-              >
-                <option value="">すべて</option>
-                <option value="small">小規模</option>
-                <option value="medium">中規模</option>
-                <option value="large">大規模</option>
-              </select>
+                placeholder="0"
+                value={filters.minPrice || ""}
+                onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? parseInt(e.target.value) : undefined })}
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">エリア</label>
+              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">価格範囲 (最大)</label>
               <input
-                type="text"
+                type="number"
                 className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                placeholder="例: 東京都"
-                value={filters.area}
-                onChange={(e) => setFilters({ ...filters, area: e.target.value })}
+                placeholder="1,000,000"
+                value={filters.maxPrice || ""}
+                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
             <div className="flex items-end">
               <button
-                onClick={() => setFilters({ industry: "", scale: "", area: "" })}
+                onClick={() => setFilters({ industry: "", scale: "", area: "", search: "", minPrice: undefined, maxPrice: undefined })}
                 className="w-full px-4 py-2 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 rounded-lg font-bold transition-all"
               >
                 リセット
@@ -244,6 +273,9 @@ export default function Marketplace() {
                         <div className="mb-4">
                           <p className="text-xs text-gray-400 mb-1 uppercase tracking-tighter">アポイント価格</p>
                           <p className="text-2xl font-bold text-cyan-400">¥{apt.price.toLocaleString()}</p>
+                          {user?.role === "power_company" && (
+                            <AIPricePrediction appointmentId={apt.id} />
+                          )}
                         </div>
                         {alreadyBid ? (
                           <div className="w-full md:w-32 py-3 bg-green-500/10 border border-green-500/30 text-green-400 font-bold text-center rounded-lg text-sm ml-auto">
@@ -256,7 +288,7 @@ export default function Marketplace() {
                               setShowBidForm(true);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className="w-full md:w-32 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-center rounded-lg text-sm transition-all shadow-lg shadow-cyan-500/20 ml-auto"
+                            className="w-full md:w-32 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30 text-sm"
                           >
                             入札する
                           </button>
@@ -267,46 +299,8 @@ export default function Marketplace() {
                 );
               })
             ) : (
-              <div className="text-center py-20 bg-[#0f2847]/30 border border-dashed border-cyan-500/30 rounded-xl">
-                <p className="text-gray-400">現在、利用可能な案件はありません</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* My Bids Section */}
-      <section className="py-16 px-8 border-t border-cyan-500/20 bg-[#0a1628]">
-        <div className="container max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold text-cyan-400 mb-8 flex items-center">
-            <span className="w-2 h-8 bg-cyan-500 mr-4 rounded-full"></span>
-            あなたの入札履歴
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {userBidsQuery.isLoading ? (
-              <p className="text-gray-400">読み込み中...</p>
-            ) : userBidsQuery.data && userBidsQuery.data.length > 0 ? (
-              userBidsQuery.data.map((bid) => (
-                <div key={bid.id} className="bg-[#0f2847]/30 border border-cyan-500/10 rounded-xl p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs text-cyan-500 font-bold uppercase tracking-widest mb-2">案件ID: #{bid.appointmentId}</p>
-                      <p className="text-2xl font-bold text-white mb-1">¥{parseFloat(bid.bidAmount.toString()).toLocaleString()}</p>
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${bid.status === 'accepted' ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
-                        <span className="text-sm text-gray-400 capitalize">{bid.status === 'pending' ? '審査中' : bid.status}</span>
-                      </div>
-                    </div>
-                    <div className="text-right text-[10px] text-gray-500 uppercase tracking-widest">
-                      {new Date(bid.createdAt).toLocaleDateString("ja-JP")}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-12 bg-[#0f2847]/10 border border-dashed border-gray-700 rounded-xl">
-                <p className="text-gray-500">まだ入札履歴がありません</p>
+              <div className="text-center py-20 bg-[#0f2847]/30 rounded-xl border border-dashed border-cyan-500/30">
+                <p className="text-gray-400">該当する案件が見つかりませんでした</p>
               </div>
             )}
           </div>

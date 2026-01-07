@@ -79,6 +79,33 @@ export const invoiceItems = sqliteTable("invoiceItems", {
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
 
+export const notifications = sqliteTable("notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  type: text("type").notNull(), // 'bid', 'appointment', 'message', 'system'
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  isRead: integer("isRead", { mode: "boolean" }).default(false).notNull(),
+  link: text("link"),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+export const messages = sqliteTable("messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  senderId: integer("senderId").notNull(),
+  receiverId: integer("receiverId").notNull(),
+  appointmentId: integer("appointmentId"),
+  content: text("content").notNull(),
+  isRead: integer("isRead", { mode: "boolean" }).default(false).notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
 export const appointmentsRelations = relations(appointments, ({ one, many }) => ({
   creator: one(users, {
     fields: [appointments.createdBy],

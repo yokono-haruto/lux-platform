@@ -2,6 +2,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
+import { DashboardCharts } from "@/components/DashboardCharts";
+import { NotificationBell } from "@/components/NotificationBell";
+import { MessageSquare } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -25,7 +28,7 @@ export default function AdminDashboard() {
     { label: "登録案件数", value: dashboardStatsQuery.data?.totalAppointments || 0, icon: "📊" },
     { label: "公開中", value: dashboardStatsQuery.data?.activeAppointments || 0, icon: "🌐" },
     { label: "入札数", value: dashboardStatsQuery.data?.totalBids || 0, icon: "💰" },
-    { label: "成約数", value: dashboardStatsQuery.data?.completedBids || 0, icon: "✅" },
+    { label: "ユーザー数", value: dashboardStatsQuery.data?.totalUsers || 0, icon: "👥" },
   ];
 
   return (
@@ -38,12 +41,16 @@ export default function AdminDashboard() {
             <p className="text-[10px] text-cyan-500/70 uppercase tracking-[0.3em] font-bold">Management System</p>
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell />
+            <button 
+              onClick={() => navigate("/messages")}
+              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-cyan-300">{user?.name}</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">System Administrator</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/10">
-              🛡️
             </div>
             <button
               onClick={handleLogout}
@@ -66,33 +73,18 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</p>
                 <p className="text-3xl font-black text-white">{stat.value}</p>
               </div>
-              <div className="absolute right-[-10%] bottom-[-10%] text-6xl opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
-                {stat.icon}
-              </div>
             </div>
           ))}
         </div>
 
-        {/* Revenue Card */}
-        {dashboardStatsQuery.data && (
-          <div className="bg-gradient-to-br from-cyan-600 to-blue-800 rounded-3xl p-10 mb-16 shadow-2xl shadow-cyan-500/20 relative overflow-hidden group">
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <p className="text-cyan-100 text-xs font-bold uppercase tracking-[0.2em] mb-3 opacity-80">Platform Total Revenue</p>
-                <p className="text-6xl sm:text-7xl font-black text-white tracking-tighter">
-                  ¥{dashboardStatsQuery.data.totalRevenue.toLocaleString()}
-                </p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center min-w-[200px]">
-                <p className="text-cyan-100 text-[10px] font-bold uppercase mb-1">Growth Rate</p>
-                <p className="text-2xl font-bold text-white">+12.5%</p>
-              </div>
-            </div>
-            <div className="absolute right-[-20px] top-[-20px] text-[12rem] opacity-10 rotate-12 pointer-events-none">
-              💰
-            </div>
+        {/* Charts Section */}
+        <div className="mb-16">
+          <div className="flex items-center gap-4 mb-6">
+            <span className="w-2 h-10 bg-cyan-500 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.5)]"></span>
+            <h2 className="text-3xl font-black text-white tracking-tight">統計グラフ</h2>
           </div>
-        )}
+          <DashboardCharts />
+        </div>
 
         <div className="flex items-center gap-4 mb-10">
           <span className="w-2 h-10 bg-cyan-500 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.5)]"></span>

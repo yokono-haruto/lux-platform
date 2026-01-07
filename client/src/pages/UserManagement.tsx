@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationBell } from "@/components/NotificationBell";
+import { Trash2 } from "lucide-react";
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -27,6 +29,7 @@ export default function UserManagement() {
   }
 
   const usersQuery = trpc.admin.listUsers.useQuery();
+  
   const createUserMutation = trpc.admin.createUser.useMutation({
     onSuccess: () => {
       toast.success("ユーザーを作成しました");
@@ -48,13 +51,13 @@ export default function UserManagement() {
     },
   });
 
-  const deactivateUserMutation = trpc.admin.deactivateUser.useMutation({
+  const deleteUserMutation = trpc.admin.deleteUser.useMutation({
     onSuccess: () => {
-      toast.success("ユーザーを無効化しました");
+      toast.success("ユーザーを削除しました");
       usersQuery.refetch();
     },
-    onError: () => {
-      toast.error("ユーザー無効化に失敗しました");
+    onError: (error: any) => {
+      toast.error(error.message || "削除に失敗しました");
     },
   });
 
@@ -65,6 +68,12 @@ export default function UserManagement() {
       return;
     }
     createUserMutation.mutate(formData);
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    if (window.confirm("本当にこのユーザーを完全に削除しますか？この操作は取り消せません。")) {
+      deleteUserMutation.mutate(userId);
+    }
   };
 
   return (
@@ -83,9 +92,12 @@ export default function UserManagement() {
               <p className="text-sm text-gray-400">企業ユーザーのアカウント作成・管理</p>
             </div>
           </div>
-          <div className="text-sm text-right">
-            <p className="font-bold text-cyan-300">{user.name}</p>
-            <p className="text-gray-400">管理者</p>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <div className="text-sm text-right">
+              <p className="font-bold text-cyan-300">{user.name}</p>
+              <p className="text-gray-400">管理者</p>
+            </div>
           </div>
         </div>
       </header>
@@ -148,31 +160,6 @@ export default function UserManagement() {
                     <option value="sales">営業部隊</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">企業名</label>
-                  <Input
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">電話番号</label>
-                  <Input
-                    type="tel"
-                    value={formData.companyPhone}
-                    onChange={(e) => setFormData({ ...formData, companyPhone: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">住所</label>
-                  <Input
-                    value={formData.companyAddress}
-                    onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
-                  />
-                </div>
               </div>
               <div className="flex justify-end">
                 <button
@@ -199,7 +186,6 @@ export default function UserManagement() {
                   <tr className="border-b border-cyan-500/30 bg-[#0a1628]/50">
                     <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">名前 / メール</th>
                     <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">ロール</th>
-                    <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">企業名</th>
                     <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">ステータス</th>
                     <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider text-right">操作</th>
                   </tr>
@@ -216,7 +202,6 @@ export default function UserManagement() {
                           {u.role === "power_company" ? "電力会社" : u.role === "sales" ? "営業部隊" : "管理者"}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-gray-300">{u.companyName || "-"}</td>
                       <td className="py-4 px-6">
                         {u.isActive ? (
                           <span className="text-green-400 text-sm font-bold">● 有効</span>
@@ -225,17 +210,12 @@ export default function UserManagement() {
                         )}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        {u.isActive && u.role !== 'admin' && (
+                        {u.role !== 'admin' && (
                           <button
-                            onClick={() => {
-                              if (window.confirm("このユーザーを無効化しますか？")) {
-                                deactivateUserMutation.mutate(u.id);
-                              }
-                            }}
-                            disabled={deactivateUserMutation.isPending}
-                            className="text-xs text-red-400 hover:text-red-300 font-bold transition-colors"
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
                           >
-                            無効化
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </td>

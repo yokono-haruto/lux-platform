@@ -1,6 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, or, and, like, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { InsertUser, users, appointments, bids, invoices, invoiceItems, Appointment, Bid, Invoice, InvoiceItem, InsertAppointment } from "../drizzle/schema";
+import { 
+  InsertUser, users, appointments, bids, invoices, invoiceItems, 
+  Appointment, Bid, Invoice, InvoiceItem, InsertAppointment,
+  notifications, messages, Notification, Message, InsertNotification, InsertMessage
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { randomBytes } from 'crypto';
 
@@ -81,34 +85,22 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
 export async function getUserByEmail(email: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
 export async function getUserById(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
-
   const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -124,9 +116,7 @@ export async function createUserWithPassword(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
   const openId = `local-${data.email}-${randomBytes(8).toString('hex')}`;
-  
   const result = await db.insert(users).values({
     openId,
     email: data.email,
@@ -139,51 +129,38 @@ export async function createUserWithPassword(data: {
     isActive: data.isActive,
     loginMethod: 'email',
   });
-  
   const userId = Number(result.lastInsertRowid);
   const rows = await db.select().from(users).where(eq(users.id, userId));
   return rows[0];
 }
 
-export async function updateUserPassword(userId: number, passwordHash: string): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
-}
-
-export async function updateUserLastSignedIn(userId: number): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, userId));
-}
-
 export async function updateUser(userId: number, data: Partial<InsertUser>): Promise<void> {
   const db = await getDb();
   if (!db) return;
-
   await db.update(users).set(data).where(eq(users.id, userId));
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(users).where(eq(users.id, userId));
 }
 
 export async function getAllUsers() {
   const db = await getDb();
   if (!db) return [];
-
   return db.select().from(users);
 }
 
 export async function deactivateUser(userId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-
   await db.update(users).set({ isActive: false }).where(eq(users.id, userId));
 }
 
 export async function activateUser(userId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-
   await db.update(users).set({ isActive: true }).where(eq(users.id, userId));
 }
 
@@ -191,33 +168,49 @@ export async function activateUser(userId: number): Promise<void> {
 export async function createAppointment(data: InsertAppointment): Promise<Appointment> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-
   const result = await db.insert(appointments).values(data);
   const appointmentId = Number(result.lastInsertRowid);
   const rows = await db.select().from(appointments).where(eq(appointments.id, appointmentId));
   return rows[0];
 }
 
-export async function getAppointments(filters: { industry?: string; scale?: string; area?: string; status?: string }) {
+export async function getAppointments(filters: { 
+  industry?: string; 
+  scale?: string; 
+  area?: string; 
+  status?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}) {
   const db = await getDb();
   if (!db) return [];
 
+  let conditions = [];
+  if (filters.industry) conditions.push(eq(appointments.industry, filters.industry));
+  if (filters.scale) conditions.push(eq(appointments.scale, filters.scale));
+  if (filters.area) conditions.push(eq(appointments.area, filters.area));
+  if (filters.status) conditions.push(eq(appointments.status, filters.status));
+  if (filters.search) conditions.push(like(appointments.title, `%${filters.search}%`));
+  if (filters.minPrice !== undefined) conditions.push(gte(appointments.price, filters.minPrice));
+  if (filters.maxPrice !== undefined) conditions.push(lte(appointments.price, filters.maxPrice));
+
   let query = db.select().from(appointments);
-  // 簡易的なフィルタリング（実際には条件を動的に追加する必要がありますが、ここでは基本実装）
+  if (conditions.length > 0) {
+    return query.where(and(...conditions));
+  }
   return query;
 }
 
 export async function getAllAppointments() {
   const db = await getDb();
   if (!db) return [];
-
   return db.select().from(appointments);
 }
 
 export async function getAppointmentById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-
   const result = await db.select().from(appointments).where(eq(appointments.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -225,15 +218,19 @@ export async function getAppointmentById(id: number) {
 export async function updateAppointment(id: number, data: Partial<InsertAppointment>): Promise<void> {
   const db = await getDb();
   if (!db) return;
-
   await db.update(appointments).set(data).where(eq(appointments.id, id));
+}
+
+export async function deleteAppointment(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(appointments).where(eq(appointments.id, id));
 }
 
 // Bids
 export async function createBid(data: { appointmentId: number; bidderId: number; bidAmount: string; notes?: string }): Promise<Bid> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-
   const result = await db.insert(bids).values(data);
   const bidId = Number(result.lastInsertRowid);
   const rows = await db.select().from(bids).where(eq(bids.id, bidId));
@@ -243,61 +240,76 @@ export async function createBid(data: { appointmentId: number; bidderId: number;
 export async function getBidsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];
-
   return db.select().from(bids).where(eq(bids.bidderId, userId));
 }
 
-export async function getBidsByAppointmentId(appointmentId: number) {
+export async function getAllBids() {
   const db = await getDb();
   if (!db) return [];
-
-  return db.select().from(bids).where(eq(bids.appointmentId, appointmentId));
+  return db.select().from(bids);
 }
 
-export async function getBidById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-
-  const result = await db.select().from(bids).where(eq(bids.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateBid(id: number, data: Partial<{ status: string; notes?: string }>): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.update(bids).set(data).where(eq(bids.id, id));
-}
-
-// Invoices
-export async function createInvoice(data: { month: string; totalAmount: string; status?: string }) {
+// Notifications
+export async function createNotification(data: InsertNotification): Promise<Notification> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-
-  const result = await db.insert(invoices).values(data);
-  const invoiceId = Number(result.lastInsertRowid);
-  const rows = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+  const result = await db.insert(notifications).values(data);
+  const id = Number(result.lastInsertRowid);
+  const rows = await db.select().from(notifications).where(eq(notifications.id, id));
   return rows[0];
 }
 
-export async function getInvoiceById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-
-  const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateInvoice(id: number, data: Partial<{ status: string }>): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.update(invoices).set(data).where(eq(invoices.id, id));
-}
-
-export async function getAllInvoices() {
+export async function getNotificationsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];
+  return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(notifications.createdAt);
+}
 
-  return db.select().from(invoices);
+export async function markNotificationAsRead(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+}
+
+export async function markAllNotificationsAsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+}
+
+// Messages
+export async function createMessage(data: InsertMessage): Promise<Message> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(messages).values(data);
+  const id = Number(result.lastInsertRowid);
+  const rows = await db.select().from(messages).where(eq(messages.id, id));
+  return rows[0];
+}
+
+export async function getConversation(userId1: number, userId2: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(messages).where(
+    or(
+      and(eq(messages.senderId, userId1), eq(messages.receiverId, userId2)),
+      and(eq(messages.senderId, userId2), eq(messages.receiverId, userId1))
+    )
+  ).orderBy(messages.createdAt);
+}
+
+export async function getUserMessages(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(messages).where(
+    or(eq(messages.senderId, userId), eq(messages.receiverId, userId))
+  ).orderBy(messages.createdAt);
+}
+
+export async function markMessagesAsRead(senderId: number, receiverId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(messages).set({ isRead: true }).where(
+    and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId))
+  );
 }

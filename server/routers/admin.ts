@@ -141,4 +141,19 @@ export const adminRouter = router({
       await authService.resetPassword(input.userId, input.newPassword);
       return { success: true };
     }),
+
+  // ユーザーを完全に削除
+  deleteUser: adminProcedure
+    .input(z.number())
+    .mutation(async ({ input: userId }) => {
+      const user = await db.getUserById(userId);
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ユーザーが見つかりません" });
+      }
+      if (user.role === 'admin') {
+        throw new TRPCError({ code: "FORBIDDEN", message: "管理者は削除できません" });
+      }
+      await db.deleteUser(userId);
+      return { success: true };
+    }),
 });
