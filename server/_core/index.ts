@@ -108,6 +108,33 @@ async function initializeDatabase() {
       )
     `);
     
+    // Notifications table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        isRead INTEGER DEFAULT 0 NOT NULL,
+        link TEXT,
+        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+    
+    // Messages table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        senderId INTEGER NOT NULL,
+        receiverId INTEGER NOT NULL,
+        appointmentId INTEGER,
+        content TEXT NOT NULL,
+        isRead INTEGER DEFAULT 0 NOT NULL,
+        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+    
     console.log("✅ Tables created successfully");
     
     // Create admin user
