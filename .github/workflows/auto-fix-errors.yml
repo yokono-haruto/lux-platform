@@ -1,0 +1,96 @@
+name: Auto Fix Errors with AI
+
+on:
+  workflow_dispatch:
+    inputs:
+      error_message:
+        description: 'Error message from Sentry'
+        required: true
+        type: string
+      stack_trace:
+        description: 'Stack trace from Sentry'
+        required: true
+        type: string
+      event_id:
+        description: 'Sentry event ID'
+        required: true
+        type: string
+
+jobs:
+  analyze-and-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Analyze error with Gemini AI
+        id: analyze
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ERROR_MESSAGE: ${{ github.event.inputs.error_message }}
+          STACK_TRACE: ${{ github.event.inputs.stack_trace }}
+        run: |
+          node .github/scripts/analyze-error.js
+
+      - name: Apply fix
+        if: steps.analyze.outputs.fix_available == 'true'
+        run: |
+          echo "Applying fix to ${{ steps.analyze.outputs.file_path }}"
+          cat << 'EOF' > "${{ steps.analyze.outputs.file_path }}"
+          ${{ steps.analyze.outputs.fix_code }}
+          EOF
+
+      - name: Create Pull Request
+        if: steps.analyze.outputs.fix_available == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            🤖 Auto-fix: ${{ steps.analyze.outputs.fix_title }}
+            
+            Sentry Event ID: ${{ github.event.inputs.event_id }}
+            
+            AI Analysis:
+            ${{ steps.analyze.outputs.analysis }}
+          branch: auto-fix/${{ github.event.inputs.event_id }}
+          delete-branch: true
+          title: '🤖 Auto-fix: ${{ steps.analyze.outputs.fix_title }}'
+          body: |
+            ## 🤖 AI自動修正
+            
+            **Sentry Event ID:** `${{ github.event.inputs.event_id }}`
+            
+            ### エラー分析
+            ${{ steps.analyze.outputs.analysis }}
+            
+            ### 修正内容
+            - **ファイル:** `${{ steps.analyze.outputs.file_path }}`
+            - **重大度:** `${{ steps.analyze.outputs.severity }}`
+            
+            ### 修正後の動作
+            この修正により、エラーが解消されます。
+            
+            ---
+            
+            ⚠️ **注意:** この修正はAIによって自動生成されました。マージ前に内容を確認してください。
+          labels: |
+            auto-fix
+            ai-generated
+            ${{ steps.analyze.outputs.severity }}
+
+      - name: Notify admin
+        if: steps.analyze.outputs.fix_available == 'true'
+        run: |
+          echo "✅ Pull Request created successfully"
+          echo "PR URL: https://github.com/${{ github.repository }}/pulls"

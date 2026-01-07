@@ -1,0 +1,38 @@
+name: Sentry Error Handler
+
+on:
+  repository_dispatch:
+    types: [sentry-error]
+
+jobs:
+  trigger-auto-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    
+    steps:
+      - name: Extract error information
+        id: extract
+        run: |
+          echo "error_message=${{ github.event.client_payload.error_message }}" >> $GITHUB_OUTPUT
+          echo "stack_trace=${{ github.event.client_payload.stack_trace }}" >> $GITHUB_OUTPUT
+          echo "event_id=${{ github.event.client_payload.event_id }}" >> $GITHUB_OUTPUT
+
+      - name: Trigger auto-fix workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'auto-fix-errors.yml',
+              ref: 'main',
+              inputs: {
+                error_message: '${{ steps.extract.outputs.error_message }}',
+                stack_trace: '${{ steps.extract.outputs.stack_trace }}',
+                event_id: '${{ steps.extract.outputs.event_id }}'
+              }
+            });
+            
+            console.log('✅ Auto-fix workflow triggered');

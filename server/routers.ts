@@ -11,6 +11,7 @@ import { chatbotRouter } from "./routers/chatbot";
 import { errorFixRouter } from "./routers/error-fix";
 import { systemStatusRouter } from "./routers/system-status";
 import { autoFixRouter } from "./routers/auto-fix";
+import { sentryWebhookRouter } from "./routers/sentry-webhook";
 
 // ==================== Validators ====================
 
@@ -296,6 +297,7 @@ export const appRouter = router({
   errorFix: errorFixRouter,
   systemStatus: systemStatusRouter,
   autoFix: autoFixRouter,
+  sentryWebhook: sentryWebhookRouter,
 });
 
 export type AppRouter = typeof appRouter;
