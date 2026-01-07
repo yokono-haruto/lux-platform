@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, Home, TrendingUp, ShoppingCart } from "lucide-react";
+import { MessageSquare, TrendingUp, ShoppingCart, ArrowLeft } from "lucide-react";
 
 export default function CompanyDashboard() {
   const { user, logout } = useAuth();
@@ -38,12 +38,12 @@ export default function CompanyDashboard() {
             <p className="text-xs text-gray-400">電力会社ダッシュボード</p>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="戻る">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <NotificationBell />
             <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="メッセージ">
               <MessageSquare className="h-5 w-5" />
-            </button>
-            <button onClick={() => navigate("/")} className="p-2 text-gray-300 hover:text-green-400 transition-colors" title="ホームに戻る">
-              <Home className="h-5 w-5" />
             </button>
             <button
               onClick={handleLogout}

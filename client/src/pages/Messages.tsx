@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Send, User, MessageSquare, Home, ArrowLeft } from "lucide-react";
+import { Send, User, MessageSquare, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -78,9 +78,7 @@ export default function Messages() {
             </button>
             <h1 className="text-xl font-bold text-cyan-400">メッセージ</h1>
           </div>
-          <button onClick={() => setLocation("/")} className="p-2 text-gray-400 hover:text-green-400" title="ホームに戻る">
-            <Home className="h-5 w-5" />
-          </button>
+
         </div>
       </header>
 

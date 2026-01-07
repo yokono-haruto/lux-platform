@@ -7,7 +7,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, Home, TrendingUp, FileText } from "lucide-react";
+import { MessageSquare, TrendingUp, FileText, ArrowLeft } from "lucide-react";
 
 const appointmentSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
@@ -73,12 +73,12 @@ export default function SalesDashboard() {
             <p className="text-xs text-gray-400">営業部隊ダッシュボード</p>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="戻る">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <NotificationBell />
             <button onClick={() => navigate("/messages")} className="p-2 text-gray-300 hover:text-blue-400 transition-colors" title="メッセージ">
               <MessageSquare className="h-5 w-5" />
-            </button>
-            <button onClick={() => navigate("/")} className="p-2 text-gray-300 hover:text-green-400 transition-colors" title="ホームに戻る">
-              <Home className="h-5 w-5" />
             </button>
             <button onClick={handleLogout} disabled={isLoggingOut} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
               {isLoggingOut ? "..." : "ログアウト"}

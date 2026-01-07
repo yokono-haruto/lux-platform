@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, Home } from "lucide-react";
+import { MessageSquare, ArrowLeft } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -41,6 +41,9 @@ export default function AdminDashboard() {
             <p className="text-[10px] text-cyan-500/70 uppercase tracking-[0.3em] font-bold">Management System</p>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="戻る">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <NotificationBell />
             <button 
               onClick={() => navigate("/messages")}
@@ -48,13 +51,6 @@ export default function AdminDashboard() {
               title="メッセージ"
             >
               <MessageSquare className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => navigate("/")}
-              className="p-2 text-gray-300 hover:text-green-400 transition-colors"
-              title="ホームに戻る"
-            >
-              <Home className="h-5 w-5" />
             </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-cyan-300">{user?.name}</p>
