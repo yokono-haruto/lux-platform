@@ -174,6 +174,15 @@ const dashboardRouter = router({
       activeAppointments: appointments.filter(a => a.status === 'active').length,
     };
   }),
+  salesStats: protectedProcedure.query(async ({ ctx }) => {
+    const appointments = await db.getAllAppointments();
+    const userAppointments = appointments.filter(a => a.createdBy === ctx.user.id);
+    return {
+      totalSubmitted: userAppointments.length,
+      activeCount: userAppointments.filter(a => a.status === 'active').length,
+      closedCount: userAppointments.filter(a => a.status === 'closed').length,
+    };
+  }),
   monthlyStats: publicProcedure.query(async () => {
     // 簡易的な月別統計（実際にはDBクエリで集計すべきですが、ここではモックデータを返します）
     return [
