@@ -36,6 +36,11 @@ export default function SalesDashboard() {
 
   const appointmentsQuery = trpc.appointments.list.useQuery({
     status: "active",
+  }, {
+    retry: false,
+    onError: (error) => {
+      console.error('Appointments query error:', error);
+    },
   });
 
   const createAppointmentMutation = trpc.appointments.create.useMutation({
@@ -54,7 +59,12 @@ export default function SalesDashboard() {
     createAppointmentMutation.mutate(data);
   };
 
-  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery();
+  const dashboardStatsQuery = trpc.dashboard.salesStats.useQuery(undefined, {
+    retry: false,
+    onError: (error) => {
+      console.error('Dashboard stats error:', error);
+    },
+  });
 
   if (!user) {
     navigate("/");
@@ -96,7 +106,7 @@ export default function SalesDashboard() {
               <div className="text-4xl">📝</div>
               <div>
                 <div className="text-3xl font-bold text-blue-400">
-                  {dashboardStatsQuery.data?.totalSubmitted || 0}
+                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.totalSubmitted ?? 0)}
                 </div>
                 <p className="text-sm text-gray-400">投入済み案件</p>
               </div>
@@ -108,7 +118,7 @@ export default function SalesDashboard() {
               <div className="text-4xl">🌐</div>
               <div>
                 <div className="text-3xl font-bold text-green-400">
-                  {dashboardStatsQuery.data?.activeCount || 0}
+                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.activeCount ?? 0)}
                 </div>
                 <p className="text-sm text-gray-400">公開中</p>
               </div>
@@ -120,7 +130,7 @@ export default function SalesDashboard() {
               <div className="text-4xl">💰</div>
               <div>
                 <div className="text-3xl font-bold text-yellow-400">
-                  {dashboardStatsQuery.data?.closedCount || 0}
+                  {dashboardStatsQuery.isLoading ? "..." : (dashboardStatsQuery.data?.closedCount ?? 0)}
                 </div>
                 <p className="text-sm text-gray-400">成約数</p>
               </div>
