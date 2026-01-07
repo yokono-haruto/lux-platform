@@ -1,8 +1,8 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db } from "../../drizzle/db";
-import { appointments, bids, users } from "../../drizzle/schema";
+import { db } from "../db";
+import { appointments, bids, users } from "@shared/schema";
 import { eq, sql, and, gte } from "drizzle-orm";
 
 export const systemStatusRouter = router({

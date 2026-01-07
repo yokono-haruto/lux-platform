@@ -1,5 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
+import type { User } from "@shared/schema";
 import { sdk } from "./sdk";
 import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
