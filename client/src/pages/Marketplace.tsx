@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
@@ -48,22 +48,25 @@ export default function Marketplace() {
   });
   const userBidsQuery = trpc.bids.getByUser.useQuery();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<BidFormData>({
-    resolver: zodResolver(bidSchema),
-  });
-
   const createBidMutation = trpc.bids.create.useMutation({
     onSuccess: () => {
       toast.success("入札が完了しました");
-      reset();
       setShowBidForm(false);
       setSelectedAppointmentId(null);
       userBidsQuery.refetch();
-      appointmentsQuery.refetch();
     },
     onError: (error) => {
       toast.error(error.message || "入札に失敗しました");
     },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<BidFormData>({
+    resolver: zodResolver(bidSchema),
   });
 
   const onSubmit = (data: BidFormData) => {
@@ -75,28 +78,43 @@ export default function Marketplace() {
     });
   };
 
+  const handleBidClick = (appointmentId: number) => {
+    setSelectedAppointmentId(appointmentId);
+    setShowBidForm(true);
+    reset();
+  };
+
   if (!user) {
-    navigate("/");
+    navigate("/login");
     return null;
   }
 
-  const userBidIds = userBidsQuery.data?.map((bid) => bid.appointmentId) || [];
-
   return (
-    <div className="min-h-screen bg-[#0a1628] text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c]">
       {/* Header */}
-      <header className="border-b border-cyan-500/30 py-6 px-8 bg-gradient-to-r from-[#0a1628] to-[#0f2847]">
-        <div className="container max-w-6xl flex justify-between items-center">
+      <header className="border-b border-cyan-500/20 bg-[#0a1628]/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container max-w-6xl py-4 px-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-cyan-400 mb-1">LUX マーケットプレイス</h1>
             <p className="text-sm text-gray-400">アポイント取引プラットフォーム</p>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-cyan-400 transition-colors" title="戻る">
+            <button
+              onClick={() => window.history.back()}
+              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
+              title="戻る"
+            >
               <ArrowLeft className="h-5 w-5" />
             </button>
+            <button
+              onClick={() => navigate(`/${user.role}/dashboard`)}
+              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
+              title="ホーム"
+            >
+              <Home className="h-5 w-5" />
+            </button>
             <NotificationBell />
-            <button 
+            <button
               onClick={() => navigate("/messages")}
               className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
             >
@@ -150,7 +168,7 @@ export default function Marketplace() {
                 className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
                 placeholder="0"
                 value={filters.minPrice || ""}
-                onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? parseInt(e.target.value) : undefined })}
+                onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })}
               />
             </div>
             <div>
@@ -160,13 +178,13 @@ export default function Marketplace() {
                 className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
                 placeholder="1,000,000"
                 value={filters.maxPrice || ""}
-                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? parseInt(e.target.value) : undefined })}
+                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
               />
             </div>
             <div className="flex items-end">
               <button
                 onClick={() => setFilters({ industry: "", scale: "", area: "", search: "", minPrice: undefined, maxPrice: undefined })}
-                className="w-full px-4 py-2 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 rounded-lg font-bold transition-all"
+                className="w-full px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all font-bold"
               >
                 リセット
               </button>
@@ -175,140 +193,140 @@ export default function Marketplace() {
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="py-12 px-8">
-        <div className="container max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold text-cyan-400 mb-8 flex items-center">
-            <span className="w-2 h-8 bg-cyan-500 mr-4 rounded-full"></span>
-            利用可能な案件
-          </h2>
+      {/* Appointments List */}
+      <section className="py-8 px-8">
+        <div className="container max-w-6xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-8 w-1 bg-gradient-to-b from-cyan-400 to-blue-500"></div>
+            <h2 className="text-2xl font-bold text-white">利用可能な案件</h2>
+          </div>
 
-          {/* Bid Form Modal */}
-          {showBidForm && selectedAppointmentId && (
-            <div className="mb-12 bg-[#0f2847] border border-cyan-500/50 rounded-xl p-8 shadow-2xl shadow-cyan-500/10 animate-in fade-in slide-in-from-top-4">
-              <h3 className="text-xl font-bold text-cyan-300 mb-6">入札フォーム</h3>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">入札金額 (JPY)</label>
-                  <input
-                    {...register("bidAmount", { valueAsNumber: true })}
-                    type="number"
-                    className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-3 text-white text-xl font-bold focus:border-cyan-400 outline-none"
-                    placeholder="0"
-                  />
-                  {errors.bidAmount && (
-                    <p className="text-red-400 text-sm mt-1">{errors.bidAmount.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">備考（オプション）</label>
-                  <textarea
-                    {...register("notes")}
-                    className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-3 text-white focus:border-cyan-400 outline-none h-24"
-                    placeholder="特記事項があれば入力してください"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    disabled={createBidMutation.isPending}
-                    className="flex-1 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30 disabled:opacity-50"
-                  >
-                    {createBidMutation.isPending ? "処理中..." : "入札を確定する"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBidForm(false);
-                      setSelectedAppointmentId(null);
-                      reset();
-                    }}
-                    className="flex-1 py-3 border border-gray-600 text-gray-400 hover:bg-gray-800 rounded-lg font-bold transition-all"
-                  >
-                    キャンセル
-                  </button>
-                </div>
-              </form>
+          {appointmentsQuery.isLoading ? (
+            <div className="text-center py-12 text-gray-400">読み込み中...</div>
+          ) : appointmentsQuery.error ? (
+            <div className="text-center py-12 text-red-400">エラーが発生しました</div>
+          ) : appointmentsQuery.data && appointmentsQuery.data.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 border border-dashed border-cyan-500/30 rounded-lg">
+              該当する案件が見つかりませんでした
             </div>
-          )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {appointmentsQuery.data?.map((appointment) => {
+                const userBid = userBidsQuery.data?.find((bid) => bid.appointmentId === appointment.id);
+                const hasBid = !!userBid;
 
-          {/* Appointments List */}
-          <div className="grid grid-cols-1 gap-6">
-            {appointmentsQuery.isLoading ? (
-              <div className="text-center py-20">
-                <div className="animate-spin w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-400">案件を読み込み中...</p>
-              </div>
-            ) : appointmentsQuery.data && appointmentsQuery.data.length > 0 ? (
-              appointmentsQuery.data.map((apt) => {
-                const alreadyBid = userBidIds.includes(apt.id);
                 return (
-                  <div key={apt.id} className="bg-[#0f2847] border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/50 transition-all group">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className="px-2 py-1 bg-cyan-500/10 text-cyan-400 text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 rounded">
-                            #{apt.id}
-                          </span>
-                          <h3 className="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">{apt.title}</h3>
-                        </div>
-                        <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-4">
-                          <span className="flex items-center gap-1">
-                            <span className="text-cyan-500">●</span> 業種: {apt.industry}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="text-cyan-500">●</span> 規模: {apt.scale}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="text-cyan-500">●</span> エリア: {apt.area}
-                          </span>
-                        </div>
-                        {apt.description && (
-                          <p className="text-gray-300 text-sm mb-4 line-clamp-2">{apt.description}</p>
-                        )}
-                        <div className="text-[10px] text-gray-500 uppercase tracking-widest">
-                          登録日: {new Date(apt.createdAt).toLocaleDateString("ja-JP")}
-                        </div>
-                      </div>
-                      <div className="w-full md:w-auto text-right">
-                        <div className="mb-4">
-                          <p className="text-xs text-gray-400 mb-1 uppercase tracking-tighter">アポイント価格</p>
-                          <p className="text-2xl font-bold text-cyan-400">¥{apt.price.toLocaleString()}</p>
-                          {user?.role === "power_company" && (
-                            <AIPricePrediction appointmentId={apt.id} />
-                          )}
-                        </div>
-                        {alreadyBid ? (
-                          <div className="w-full md:w-32 py-3 bg-green-500/10 border border-green-500/30 text-green-400 font-bold text-center rounded-lg text-sm ml-auto">
-                            入札済み
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedAppointmentId(apt.id);
-                              setShowBidForm(true);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="w-full md:w-32 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30 text-sm"
-                          >
-                            入札する
-                          </button>
-                        )}
-                      </div>
+                  <div
+                    key={appointment.id}
+                    className="bg-[#0a1628]/60 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-400/40 transition-all hover:shadow-lg hover:shadow-cyan-500/10"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl font-bold text-white">{appointment.title}</h3>
+                      <span className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs font-bold text-cyan-400">
+                        {appointment.scale}
+                      </span>
                     </div>
+                    <div className="space-y-2 mb-4 text-sm">
+                      <p className="text-gray-300">
+                        <span className="text-cyan-400 font-bold">業種:</span> {appointment.industry}
+                      </p>
+                      <p className="text-gray-300">
+                        <span className="text-cyan-400 font-bold">エリア:</span> {appointment.area}
+                      </p>
+                      <p className="text-gray-300">
+                        <span className="text-cyan-400 font-bold">入札設定価格:</span> ¥{appointment.price.toLocaleString()}
+                      </p>
+                      {appointment.monthlyAmount && (
+                        <p className="text-gray-300">
+                          <span className="text-cyan-400 font-bold">月額料金:</span> ¥{appointment.monthlyAmount.toLocaleString()}
+                        </p>
+                      )}
+                      <p className="text-gray-300">
+                        <span className="text-cyan-400 font-bold">ステータス:</span> {appointment.status}
+                      </p>
+                    </div>
+
+                    {hasBid ? (
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                        <p className="text-green-400 font-bold mb-2">✓ 入札済み</p>
+                        <p className="text-sm text-gray-300">
+                          入札額: ¥{userBid.bidAmount.toLocaleString()}
+                        </p>
+                        {userBid.notes && (
+                          <p className="text-sm text-gray-400 mt-1">備考: {userBid.notes}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleBidClick(appointment.id)}
+                        className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg text-white font-bold hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg shadow-cyan-500/20"
+                      >
+                        入札する
+                      </button>
+                    )}
+
+                    <AIPricePrediction
+                      industry={appointment.industry}
+                      scale={appointment.scale}
+                      area={appointment.area}
+                    />
                   </div>
                 );
-              })
-            ) : (
-              <div className="text-center py-20 bg-[#0f2847]/30 rounded-xl border border-dashed border-cyan-500/30">
-                <p className="text-gray-400">該当する案件が見つかりませんでした</p>
-              </div>
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Bid Form Modal */}
+      {showBidForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0a1628] border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-2xl font-bold text-white mb-6">入札情報を入力</h3>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-cyan-300 mb-2">入札額 *</label>
+                <input
+                  type="number"
+                  {...register("bidAmount", { valueAsNumber: true })}
+                  className="w-full bg-[#0f2847] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
+                  placeholder="例: 500000"
+                />
+                {errors.bidAmount && (
+                  <p className="text-red-400 text-sm mt-1">{errors.bidAmount.message}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-cyan-300 mb-2">備考（任意）</label>
+                <textarea
+                  {...register("notes")}
+                  className="w-full bg-[#0f2847] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all h-24"
+                  placeholder="補足情報があれば入力してください"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBidForm(false);
+                    setSelectedAppointmentId(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-500/10 border border-gray-500/30 rounded-lg text-gray-400 hover:bg-gray-500/20 hover:border-gray-500/50 transition-all font-bold"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={createBidMutation.isPending}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg text-white font-bold hover:from-cyan-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {createBidMutation.isPending ? "送信中..." : "入札する"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
