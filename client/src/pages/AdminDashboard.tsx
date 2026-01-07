@@ -91,7 +91,7 @@ export default function AdminDashboard() {
           <h2 className="text-3xl font-black text-white tracking-tight">クイックメニュー</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* 案件管理 */}
           <Link href="/admin/appointments">
             <a className="group bg-[#0f2847] border border-cyan-500/20 rounded-2xl p-8 hover:bg-cyan-500/10 hover:border-cyan-400 transition-all shadow-xl flex flex-col h-full">
@@ -133,6 +133,21 @@ export default function AdminDashboard() {
               </div>
             </a>
           </Link>
+
+          {/* ホームに戻る */}
+          <button
+            onClick={() => navigate("/")}
+            className="group bg-[#0f2847] border border-green-500/20 rounded-2xl p-8 hover:bg-green-500/10 hover:border-green-400 transition-all shadow-xl flex flex-col h-full"
+          >
+            <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:scale-110 transition-transform border border-green-500/20">🏠</div>
+            <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-green-300 transition-colors">ホームに戻る</h3>
+            <p className="text-sm text-gray-400 leading-relaxed mb-8 flex-grow">
+              ダッシュボードを終了して、ホームページに戻ります。
+            </p>
+            <div className="flex items-center text-green-400 font-bold text-sm pt-6 border-t border-green-500/10">
+              ホームへ <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+            </div>
+          </button>
         </div>
       </main>
     </div>

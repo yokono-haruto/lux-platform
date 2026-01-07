@@ -143,7 +143,7 @@ export default function SalesDashboard() {
       <section className="py-8 px-8">
         <div className="container mx-auto">
           <h3 className="text-xl font-bold text-white mb-4">クイックアクション</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
@@ -158,6 +158,14 @@ export default function SalesDashboard() {
             >
               <span className="text-2xl">📊</span>
               <span>案件一覧を表示</span>
+            </button>
+            
+            <button
+              onClick={() => navigate("/")}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+            >
+              <span className="text-2xl">🏠</span>
+              <span>ホームに戻る</span>
             </button>
           </div>
         </div>
