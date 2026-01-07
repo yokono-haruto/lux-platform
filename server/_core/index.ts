@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import bcrypt from "bcrypt";
+import { initSentry } from "../lib/sentry";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -229,6 +230,9 @@ async function initializeDatabase() {
 }
 
 async function startServer() {
+  // Initialize Sentry for error monitoring
+  initSentry();
+  
   // Initialize database before starting server
   await initializeDatabase();
   

@@ -8,6 +8,7 @@ import { notifyNewBid } from "./notification";
 import { authRouter } from "./routers/auth";
 import { adminRouter } from "./routers/admin";
 import { chatbotRouter } from "./routers/chatbot";
+import { errorFixRouter } from "./routers/error-fix";
 
 // ==================== Validators ====================
 
@@ -290,6 +291,7 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   ai: aiRouter,
   chatbot: chatbotRouter,
+  errorFix: errorFixRouter,
 });
 
 export type AppRouter = typeof appRouter;

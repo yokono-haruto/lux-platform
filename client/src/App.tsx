@@ -1,5 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useEffect } from "react";
+import { initPostHog } from "@/lib/posthog";
+import { initSentry } from "@/lib/sentry";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -49,6 +52,11 @@ function Router() {
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
+  useEffect(() => {
+    initPostHog();
+    initSentry();
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider
