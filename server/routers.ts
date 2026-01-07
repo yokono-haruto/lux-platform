@@ -241,10 +241,13 @@ const dashboardRouter = router({
     const appointments = await db.getAllAppointments();
     const bids = await db.getAllBids();
     const users = await db.getAllUsers();
+    const salesCount = users.filter(u => u.role === 'sales').length;
+    const powerCompanyCount = users.filter(u => u.role === 'power_company').length;
     return {
       totalAppointments: appointments.length,
       totalBids: bids.length,
-      totalUsers: users.length,
+      salesCount,
+      powerCompanyCount,
       activeAppointments: appointments.filter(a => a.status === 'active').length,
     };
   }),

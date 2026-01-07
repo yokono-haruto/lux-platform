@@ -125,7 +125,7 @@ export default function TodayStatus() {
         {/* 本日の概要 */}
         <div className="bg-[#0f2847]/80 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-6 mb-8 shadow-xl">
           <h3 className="text-lg font-semibold text-cyan-400 mb-4">本日の活動概要</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
               <p className="text-sm text-gray-400 mb-1">新規案件</p>
               <p className="text-3xl font-bold text-blue-400">
@@ -154,19 +154,40 @@ export default function TodayStatus() {
               </p>
               <p className="text-xs text-gray-500 mt-1">件</p>
             </div>
+          </div>
+        </div>
+
+        {/* 登録状況 */}
+        <div className="bg-[#0f2847]/80 backdrop-blur-sm border border-cyan-500/20 rounded-xl p-6 mb-8 shadow-xl">
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">登録状況</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4">
-              <p className="text-sm text-gray-400 mb-1">総ユーザー数</p>
+              <p className="text-sm text-gray-400 mb-1">営業部隊数</p>
               <p className="text-3xl font-bold text-indigo-400">
-                {status?.summary.totalUsers || 0}
+                {status?.summary.salesCount || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">人</p>
+              <p className="text-xs text-gray-500 mt-1">社</p>
             </div>
             <div className="bg-teal-500/10 border border-teal-500/20 rounded-lg p-4">
-              <p className="text-sm text-gray-400 mb-1">アクティブユーザー</p>
+              <p className="text-sm text-gray-400 mb-1">アクティブ営業部隊</p>
               <p className="text-3xl font-bold text-teal-400">
-                {status?.summary.activeUsers || 0}
+                {status?.summary.activeSalesCount || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">人</p>
+              <p className="text-xs text-gray-500 mt-1">社</p>
+            </div>
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">電力会社数</p>
+              <p className="text-3xl font-bold text-orange-400">
+                {status?.summary.powerCompanyCount || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">社</p>
+            </div>
+            <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">アクティブ電力会社</p>
+              <p className="text-3xl font-bold text-pink-400">
+                {status?.summary.activePowerCompanyCount || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">社</p>
             </div>
           </div>
         </div>

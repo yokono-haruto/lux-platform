@@ -55,17 +55,32 @@ export const systemStatusRouter = router({
         .where(eq(appointments.status, "active"))
         .then((rows) => rows[0]?.count || 0);
 
-      // 総ユーザー数
-      const totalUsers = await db
+      // 営業部隊数（role = 'sales'）
+      const salesCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(users)
+        .where(eq(users.role, "sales"))
         .then((rows) => rows[0]?.count || 0);
 
-      // アクティブユーザー数（isActive = 1）
-      const activeUsers = await db
+      // 電力会社数（role = 'power_company'）
+      const powerCompanyCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(users)
-        .where(eq(users.isActive, 1))
+        .where(eq(users.role, "power_company"))
+        .then((rows) => rows[0]?.count || 0);
+
+      // アクティブ営業部隊数
+      const activeSalesCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(and(eq(users.role, "sales"), eq(users.isActive, 1)))
+        .then((rows) => rows[0]?.count || 0);
+
+      // アクティブ電力会社数
+      const activePowerCompanyCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(and(eq(users.role, "power_company"), eq(users.isActive, 1)))
         .then((rows) => rows[0]?.count || 0);
 
       // システムの健全性を判定
@@ -124,8 +139,10 @@ export const systemStatusRouter = router({
           newBidsToday,
           pendingAppointments,
           activeAppointments,
-          totalUsers,
-          activeUsers,
+          salesCount,
+          powerCompanyCount,
+          activeSalesCount,
+          activePowerCompanyCount,
         },
         issues,
         lastUpdated: new Date().toISOString(),

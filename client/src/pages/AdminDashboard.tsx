@@ -36,7 +36,8 @@ export default function AdminDashboard() {
     { label: "登録案件数", value: dashboardStatsQuery.data?.totalAppointments || 0, icon: "📊" },
     { label: "公開中", value: dashboardStatsQuery.data?.activeAppointments || 0, icon: "🌐" },
     { label: "入札数", value: dashboardStatsQuery.data?.totalBids || 0, icon: "💰" },
-    { label: "ユーザー数", value: dashboardStatsQuery.data?.totalUsers || 0, icon: "👥" },
+    { label: "営業部隊数", value: dashboardStatsQuery.data?.salesCount || 0, icon: "👥" },
+    { label: "電力会社数", value: dashboardStatsQuery.data?.powerCompanyCount || 0, icon: "🏢" },
   ];
 
   return (
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
 
       <main className="container max-w-6xl mx-auto py-12 px-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
           {stats.map((stat, i) => (
             <div 
               key={i} 
@@ -210,7 +211,11 @@ export default function AdminDashboard() {
             </div>
             <div className="text-center py-8">
               <p className="text-gray-400">現在、該当するデータがありません。</p>
-              <p className="text-gray-500 text-sm mt-2">案件や入札が登録されると、ここに表示されます。</p>
+              <p className="text-gray-500 text-sm mt-2">
+                {selectedStat === "営業部隊数" && "営業部隊が登録されると、ここに表示されます。"}
+                {selectedStat === "電力会社数" && "電力会社が登録されると、ここに表示されます。"}
+                {selectedStat !== "営業部隊数" && selectedStat !== "電力会社数" && "案件や入札が登録されると、ここに表示されます。"}
+              </p>
             </div>
           </div>
         </div>
