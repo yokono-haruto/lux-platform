@@ -303,7 +303,11 @@ async function activateUser(userId) {
 async function createAppointment(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(appointments).values(data);
+  const dataWithTimestamp = {
+    ...data,
+    createdAt: Date.now()
+  };
+  const result = await db.insert(appointments).values(dataWithTimestamp);
   const appointmentId = Number(result.lastInsertRowid);
   const rows = await db.select().from(appointments).where(eq(appointments.id, appointmentId));
   return rows[0];
@@ -349,7 +353,11 @@ async function deleteAppointment(id) {
 async function createBid(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(bids).values(data);
+  const dataWithTimestamp = {
+    ...data,
+    createdAt: Date.now()
+  };
+  const result = await db.insert(bids).values(dataWithTimestamp);
   const bidId = Number(result.lastInsertRowid);
   const rows = await db.select().from(bids).where(eq(bids.id, bidId));
   return rows[0];
@@ -372,10 +380,9 @@ async function updateBidStatus(bidId, status) {
 async function createNotification(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const now = /* @__PURE__ */ new Date();
   const result = await db.insert(notifications).values({
     ...data,
-    createdAt: now
+    createdAt: Date.now()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(notifications).where(eq(notifications.id, id));
@@ -399,10 +406,9 @@ async function markAllNotificationsAsRead(userId) {
 async function createMessage(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const now = /* @__PURE__ */ new Date();
   const result = await db.insert(messages).values({
     ...data,
-    createdAt: now
+    createdAt: Date.now()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(messages).where(eq(messages.id, id));
