@@ -20,7 +20,8 @@ export default function AppointmentManagement() {
     industry: "",
     scale: "",
     area: "",
-    price: 0,
+    bidPrice: 0,
+    monthlyAmount: 0,
     description: "",
     status: "active" as "active" | "sold" | "archived",
   });
@@ -71,7 +72,8 @@ export default function AppointmentManagement() {
       industry: "",
       scale: "",
       area: "",
-      price: 0,
+      bidPrice: 0,
+      monthlyAmount: 0,
       description: "",
       status: "active",
     });
@@ -94,7 +96,8 @@ export default function AppointmentManagement() {
       industry: apt.industry,
       scale: apt.scale,
       area: apt.area,
-      price: apt.price,
+      bidPrice: apt.price || 0,
+      monthlyAmount: apt.monthlyAmount || 0,
       description: apt.description || "",
       status: apt.status as any,
     });
@@ -188,8 +191,17 @@ export default function AppointmentManagement() {
                   <Input
                     required
                     type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                    value={formData.bidPrice}
+                    onChange={(e) => setFormData({ ...formData, bidPrice: parseInt(e.target.value) || 0 })}
+                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400 font-bold text-cyan-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-cyan-300 mb-2">月額料金 (JPY)</label>
+                  <Input
+                    type="number"
+                    value={formData.monthlyAmount}
+                    onChange={(e) => setFormData({ ...formData, monthlyAmount: parseInt(e.target.value) || 0 })}
                     className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400 font-bold text-cyan-400"
                   />
                 </div>
@@ -244,7 +256,7 @@ export default function AppointmentManagement() {
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="text-xl font-bold text-cyan-300">{appointment.title}</h3>
                     <div className="flex items-center gap-4">
-                      <span className="text-cyan-400 font-bold">¥{appointment.price.toLocaleString()}</span>
+                      <span className="text-cyan-400 font-bold">¥{(appointment.price || 0).toLocaleString()}</span>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => handleEdit(appointment)}
