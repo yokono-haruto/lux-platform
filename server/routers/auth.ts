@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as authService from "../auth";
 import * as db from "../db";
+import bcrypt from "bcrypt";
 
 const loginSchema = z.object({
   email: z.string(),
@@ -31,10 +32,11 @@ export const authRouter = router({
         // データベース上のlux.yokono@gmail.comを管理者として確保
         let user = await db.getUserByEmail("lux.yokono@gmail.com");
         if (!user) {
+          const passwordHash = await bcrypt.hash("20250515", 10);
           user = await db.createUserWithPassword({
             email: "lux.yokono@gmail.com",
-            name: "LUX 管理者",
-            passwordHash: "BYPASS",
+            name: "横野 晴飛",
+            passwordHash: passwordHash,
             role: "admin",
             companyName: "LUX",
             isActive: true,
@@ -68,9 +70,15 @@ export const authRouter = router({
       if (input.email === 'lux_sales' && input.password === 'sales2025') {
         let user = await db.getUserByEmail("sales@lux-test.com");
         if (!user) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "ユーザーが見つかりません",
+          // テストユーザーを自動作成
+          const passwordHash = await bcrypt.hash("sales2025", 10);
+          user = await db.createUserWithPassword({
+            email: "sales@lux-test.com",
+            name: "営業部隊テスト",
+            passwordHash: passwordHash,
+            role: "sales",
+            companyName: "LUX営業部",
+            isActive: true,
           });
         }
 
@@ -97,9 +105,15 @@ export const authRouter = router({
       if (input.email === 'lux_company' && input.password === 'company2025') {
         let user = await db.getUserByEmail("company@lux-test.com");
         if (!user) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "ユーザーが見つかりません",
+          // テストユーザーを自動作成
+          const passwordHash = await bcrypt.hash("company2025", 10);
+          user = await db.createUserWithPassword({
+            email: "company@lux-test.com",
+            name: "電力会社テスト",
+            passwordHash: passwordHash,
+            role: "power_company",
+            companyName: "テスト電力株式会社",
+            isActive: true,
           });
         }
 

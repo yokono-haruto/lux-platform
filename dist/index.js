@@ -932,6 +932,7 @@ async function resetPassword(userId, newPassword) {
 }
 
 // server/routers/auth.ts
+import bcrypt2 from "bcrypt";
 var loginSchema = z2.object({
   email: z2.string(),
   password: z2.string()
@@ -952,10 +953,11 @@ var authRouter = router({
     if (input.email === "lux_yokono" && input.password === "20250515") {
       let user = await getUserByEmail("lux.yokono@gmail.com");
       if (!user) {
+        const passwordHash = await bcrypt2.hash("20250515", 10);
         user = await createUserWithPassword({
           email: "lux.yokono@gmail.com",
-          name: "LUX \u7BA1\u7406\u8005",
-          passwordHash: "BYPASS",
+          name: "\u6A2A\u91CE \u6674\u98DB",
+          passwordHash,
           role: "admin",
           companyName: "LUX",
           isActive: true
@@ -985,9 +987,14 @@ var authRouter = router({
     if (input.email === "lux_sales" && input.password === "sales2025") {
       let user = await getUserByEmail("sales@lux-test.com");
       if (!user) {
-        throw new TRPCError3({
-          code: "UNAUTHORIZED",
-          message: "\u30E6\u30FC\u30B6\u30FC\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093"
+        const passwordHash = await bcrypt2.hash("sales2025", 10);
+        user = await createUserWithPassword({
+          email: "sales@lux-test.com",
+          name: "\u55B6\u696D\u90E8\u968A\u30C6\u30B9\u30C8",
+          passwordHash,
+          role: "sales",
+          companyName: "LUX\u55B6\u696D\u90E8",
+          isActive: true
         });
       }
       const COOKIE_NAME2 = "session";
@@ -1010,9 +1017,14 @@ var authRouter = router({
     if (input.email === "lux_company" && input.password === "company2025") {
       let user = await getUserByEmail("company@lux-test.com");
       if (!user) {
-        throw new TRPCError3({
-          code: "UNAUTHORIZED",
-          message: "\u30E6\u30FC\u30B6\u30FC\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093"
+        const passwordHash = await bcrypt2.hash("company2025", 10);
+        user = await createUserWithPassword({
+          email: "company@lux-test.com",
+          name: "\u96FB\u529B\u4F1A\u793E\u30C6\u30B9\u30C8",
+          passwordHash,
+          role: "power_company",
+          companyName: "\u30C6\u30B9\u30C8\u96FB\u529B\u682A\u5F0F\u4F1A\u793E",
+          isActive: true
         });
       }
       const COOKIE_NAME2 = "session";
@@ -2208,7 +2220,7 @@ function serveStatic(app) {
 }
 
 // server/_core/index.ts
-import bcrypt2 from "bcrypt";
+import bcrypt3 from "bcrypt";
 
 // server/lib/sentry.ts
 import * as Sentry from "@sentry/node";
@@ -2370,7 +2382,7 @@ async function initializeDatabase() {
     console.log("\u{1F464} Creating admin user...");
     const adminEmail = "lux.yokono@gmail.com";
     const adminPassword = "20250515";
-    const passwordHash = await bcrypt2.hash(adminPassword, 10);
+    const passwordHash = await bcrypt3.hash(adminPassword, 10);
     await db.insert(users2).values({
       email: adminEmail,
       name: "\u6A2A\u91CE \u6674\u98DB",
@@ -2396,7 +2408,7 @@ async function initializeDatabase() {
     console.log("\u{1F194} User ID: lux_yokono");
     console.log("\u{1F464} Creating sales test user...");
     const salesPassword = "sales2025";
-    const salesPasswordHash = await bcrypt2.hash(salesPassword, 10);
+    const salesPasswordHash = await bcrypt3.hash(salesPassword, 10);
     await db.insert(users2).values({
       email: "sales@lux-test.com",
       name: "\u55B6\u696D\u90E8\u968A\u30C6\u30B9\u30C8",
@@ -2423,7 +2435,7 @@ async function initializeDatabase() {
     console.log("\u{1F194} User ID: lux_sales");
     console.log("\u{1F464} Creating power company test user...");
     const companyPassword = "company2025";
-    const companyPasswordHash = await bcrypt2.hash(companyPassword, 10);
+    const companyPasswordHash = await bcrypt3.hash(companyPassword, 10);
     await db.insert(users2).values({
       email: "company@lux-test.com",
       name: "\u96FB\u529B\u4F1A\u793E\u30C6\u30B9\u30C8",
