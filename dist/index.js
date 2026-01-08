@@ -425,6 +425,16 @@ async function getUserMessages(userId) {
     or(eq(messages.senderId, userId), eq(messages.receiverId, userId))
   ).orderBy(messages.createdAt);
 }
+async function updateUserLastSignedIn(userId) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastSignedIn: /* @__PURE__ */ new Date() }).where(eq(users.id, userId));
+}
+async function updateUserPassword(userId, newPasswordHash) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ passwordHash: newPasswordHash }).where(eq(users.id, userId));
+}
 
 // server/_core/cookies.ts
 function isSecureRequest(req) {
@@ -891,7 +901,7 @@ async function loginWithEmail(email, password) {
   if (!isPasswordValid) {
     return null;
   }
-  await (void 0)(user.id);
+  await updateUserLastSignedIn(user.id);
   return {
     user: {
       id: user.id,
@@ -912,12 +922,12 @@ async function changePassword(userId, oldPassword, newPassword) {
   const isPasswordValid = await verifyPassword(oldPassword, user.passwordHash);
   if (!isPasswordValid) return false;
   const newPasswordHash = await hashPassword(newPassword);
-  await (void 0)(userId, newPasswordHash);
+  await updateUserPassword(userId, newPasswordHash);
   return true;
 }
 async function resetPassword(userId, newPassword) {
   const newPasswordHash = await hashPassword(newPassword);
-  await (void 0)(userId, newPasswordHash);
+  await updateUserPassword(userId, newPasswordHash);
   return true;
 }
 

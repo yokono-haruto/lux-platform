@@ -327,3 +327,18 @@ export async function markMessagesAsRead(senderId: number, receiverId: number) {
     and(eq(messages.senderId, senderId), eq(messages.receiverId, receiverId))
   );
 }
+
+
+// Update user's last signed in timestamp
+export async function updateUserLastSignedIn(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, userId));
+}
+
+// Update user's password
+export async function updateUserPassword(userId: number, newPasswordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ passwordHash: newPasswordHash }).where(eq(users.id, userId));
+}
