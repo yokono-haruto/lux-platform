@@ -43,7 +43,11 @@ export const authRouter = router({
           });
         } else if (user.role !== "admin") {
           await db.updateUser(user.id, { role: "admin" });
-          user.role = "admin";
+          // 更新後のユーザー情報を再取得
+          user = await db.getUserByEmail("lux.yokono@gmail.com");
+          if (!user) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "User not found after update" });
+          }
         }
 
         // セッションクッキーを設定

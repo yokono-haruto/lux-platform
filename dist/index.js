@@ -964,7 +964,10 @@ var authRouter = router({
         });
       } else if (user.role !== "admin") {
         await updateUser(user.id, { role: "admin" });
-        user.role = "admin";
+        user = await getUserByEmail("lux.yokono@gmail.com");
+        if (!user) {
+          throw new TRPCError3({ code: "INTERNAL_SERVER_ERROR", message: "User not found after update" });
+        }
       }
       const COOKIE_NAME2 = "session";
       ctx.res.cookie(COOKIE_NAME2, `admin-session-${user.id}`, {
