@@ -168,10 +168,10 @@ export async function activateUser(userId: number): Promise<void> {
 export async function createAppointment(data: InsertAppointment): Promise<Appointment> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // createdAtを明示的に現在時刻（ミリ秒）で設定
+  // createdAtを明示的に現在時刻で設定（Dateオブジェクト）
   const dataWithTimestamp = {
     ...data,
-    createdAt: Date.now(),
+    createdAt: new Date(),
   };
   const result = await db.insert(appointments).values(dataWithTimestamp);
   const appointmentId = Number(result.lastInsertRowid);
@@ -236,10 +236,10 @@ export async function deleteAppointment(id: number): Promise<void> {
 export async function createBid(data: { appointmentId: number; bidderId: number; bidAmount: string; notes?: string }): Promise<Bid> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // createdAtを明示的に現在時刻（ミリ秒）で設定
+  // createdAtを明示的に現在時刻で設定（Dateオブジェクト）
   const dataWithTimestamp = {
     ...data,
-    createdAt: Date.now(),
+    createdAt: new Date(),
   };
   const result = await db.insert(bids).values(dataWithTimestamp);
   const bidId = Number(result.lastInsertRowid);
@@ -269,10 +269,10 @@ export async function updateBidStatus(bidId: number, status: string) {
 export async function createNotification(data: InsertNotification): Promise<Notification> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // createdAtを明示的に現在時刻（ミリ秒）で設定
+  // createdAtを明示的に現在時刻で設定（Dateオブジェクト）
   const result = await db.insert(notifications).values({
     ...data,
-    createdAt: Date.now()
+    createdAt: new Date()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(notifications).where(eq(notifications.id, id));
@@ -301,10 +301,10 @@ export async function markAllNotificationsAsRead(userId: number) {
 export async function createMessage(data: InsertMessage): Promise<Message> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // createdAtを明示的に現在時刻（ミリ秒）で設定
+  // createdAtを明示的に現在時刻で設定（Dateオブジェクト）
   const result = await db.insert(messages).values({
     ...data,
-    createdAt: Date.now()
+    createdAt: new Date()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(messages).where(eq(messages.id, id));

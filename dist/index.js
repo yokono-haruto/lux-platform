@@ -305,7 +305,7 @@ async function createAppointment(data) {
   if (!db) throw new Error("Database not available");
   const dataWithTimestamp = {
     ...data,
-    createdAt: Date.now()
+    createdAt: /* @__PURE__ */ new Date()
   };
   const result = await db.insert(appointments).values(dataWithTimestamp);
   const appointmentId = Number(result.lastInsertRowid);
@@ -355,7 +355,7 @@ async function createBid(data) {
   if (!db) throw new Error("Database not available");
   const dataWithTimestamp = {
     ...data,
-    createdAt: Date.now()
+    createdAt: /* @__PURE__ */ new Date()
   };
   const result = await db.insert(bids).values(dataWithTimestamp);
   const bidId = Number(result.lastInsertRowid);
@@ -382,7 +382,7 @@ async function createNotification(data) {
   if (!db) throw new Error("Database not available");
   const result = await db.insert(notifications).values({
     ...data,
-    createdAt: Date.now()
+    createdAt: /* @__PURE__ */ new Date()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(notifications).where(eq(notifications.id, id));
@@ -408,7 +408,7 @@ async function createMessage(data) {
   if (!db) throw new Error("Database not available");
   const result = await db.insert(messages).values({
     ...data,
-    createdAt: Date.now()
+    createdAt: /* @__PURE__ */ new Date()
   });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(messages).where(eq(messages.id, id));
