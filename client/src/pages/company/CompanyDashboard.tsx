@@ -1,21 +1,28 @@
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { MessageBell } from "@/components/MessageBell";
 import { Footer } from "@/components/Footer";
-import { MessageSquare, TrendingUp, ShoppingCart, ArrowLeft, User, Home } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { 
+  FileText, 
+  TrendingUp, 
+  ShoppingCart,
+  Clock,
+  Search,
+  MessageSquare,
+  LogOut,
+  ChevronRight,
+  Zap,
+  DollarSign
+} from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 export default function CompanyDashboard() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [showMonthlyDetails, setShowMonthlyDetails] = useState(false);
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [selectedStatLabel, setSelectedStatLabel] = useState<string | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -25,7 +32,6 @@ export default function CompanyDashboard() {
 
   const bidsQuery = trpc.bids.getByUser.useQuery(undefined, {
     retry: false,
-    onError: () => {},
   });
 
   if (!user) {
@@ -34,193 +40,227 @@ export default function CompanyDashboard() {
   }
 
   const bids = bidsQuery.data || [];
-  const monthlyPurchases = bids.filter(b => b.status === "accepted").length;
-  const monthlyTotal = bids.filter(b => b.status === "accepted").reduce((sum, b) => sum + (b.bidAmount || 0), 0);
+  const pendingBids = bids.filter(b => b.status === "pending").length;
+  const acceptedBids = bids.filter(b => b.status === "accepted").length;
+  const monthlyTotal = bids.filter(b => b.status === "accepted").reduce((sum, b) => sum + (Number(b.bidAmount) || 0), 0);
 
-  // 月別データ生成
   const monthlyData = [
     { month: "8月", amount: 120000, count: 3 },
     { month: "9月", amount: 180000, count: 5 },
     { month: "10月", amount: 250000, count: 7 },
     { month: "11月", amount: 320000, count: 9 },
-    { month: "12月", amount: monthlyTotal || 150000, count: monthlyPurchases || 4 },
+    { month: "12月", amount: monthlyTotal || 150000, count: acceptedBids || 4 },
   ];
 
+  const statCards = [
+    { label: "入札済み案件", value: bids.length, icon: FileText, color: "indigo" },
+    { label: "入札中", value: pendingBids, icon: Clock, color: "amber" },
+    { label: "購入済み", value: acceptedBids, icon: ShoppingCart, color: "emerald" },
+    { label: "今月の購入額", value: `¥${monthlyTotal.toLocaleString()}`, icon: DollarSign, color: "purple" },
+  ];
+
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; border: string; text: string }> = {
+      indigo: { bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-400" },
+      emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-400" },
+      amber: { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-400" },
+      purple: { bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-400" },
+    };
+    return colors[color] || colors.indigo;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return <span className="badge-success">成約</span>;
+      case "rejected":
+        return <span className="badge-error">却下</span>;
+      default:
+        return <span className="badge-warning">入札中</span>;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#000b18] text-white flex flex-col">
+    <div className="min-h-screen gradient-bg flex flex-col">
       {/* Header */}
-      <header className="bg-[#001529] border-b border-[#003a70] py-4 px-8 sticky top-0 z-50">
-        <div className="container max-w-6xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-[#00a3ff]">LUX MARKETPLACE</h1>
-            <p className="text-xs text-gray-400">電力会社ダッシュボード</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/company/dashboard">
-              <a className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="ホーム">
-                <Home className="h-5 w-5" />
-              </a>
-            </Link>
-            <button onClick={() => window.history.back()} className="p-2 text-gray-300 hover:text-[#00a3ff] transition-colors" title="戻る">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <NotificationBell />
-            <MessageBell />
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/20 border-b border-white/5">
+        <div className="container max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#00a3ff]/20 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-[#00a3ff]" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-white" />
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-[#00a3ff]">{user.name}</p>
-                <p className="text-xs text-gray-400">{user.companyName || "電力会社"}</p>
+              <div>
+                <h1 className="text-xl font-bold text-white">LUX Marketplace</h1>
+                <p className="text-xs text-white/40">電力会社ダッシュボード</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              {isLoggingOut ? "..." : "ログアウト"}
-            </button>
+
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <MessageBell />
+              
+              <div className="hidden md:flex items-center gap-3 ml-2 pl-4 border-l border-white/10">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
+                  {user?.name?.charAt(0) || "C"}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-white">{user?.name}</p>
+                  <p className="text-xs text-white/40">{user?.companyName || "電力会社"}</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all disabled:opacity-50"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-6xl mx-auto py-8 px-8 flex-1">
+      <main className="flex-1 container max-w-7xl mx-auto px-6 py-8">
         {/* Welcome */}
-        <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold text-white mb-2">ようこそ、{user.name || "電力会社"}様</h2>
-          <p className="text-gray-300 text-sm">公開されている案件を閲覧し、入札することができます。</p>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            ようこそ、{user?.name}さん
+          </h2>
+          <p className="text-white/50">
+            公開中の案件を閲覧し、入札を行いましょう
+          </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div 
-            onClick={() => {
-              setSelectedStatLabel("入札済み案件");
-              setShowStatsModal(true);
-            }}
-            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📋</div>
-              <div>
-                <div className="text-2xl font-bold text-[#00a3ff]">{bids.length}</div>
-                <div className="text-gray-400 text-xs">入札済み案件</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {statCards.map((stat, i) => {
+            const colors = getColorClasses(stat.color);
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="stat-card">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-10 h-10 rounded-xl ${colors.bg} ${colors.border} border flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${colors.text}`} />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white mb-1">{stat.value}</p>
+                <p className="text-sm text-white/50">{stat.label}</p>
               </div>
-            </div>
-          </div>
-          <div 
-            onClick={() => {
-              setSelectedStatLabel("入札中");
-              setShowStatsModal(true);
-            }}
-            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">💰</div>
-              <div>
-                <div className="text-2xl font-bold text-green-400">{bids.filter(b => b.status === "pending").length}</div>
-                <div className="text-gray-400 text-xs">入札中</div>
-              </div>
-            </div>
-          </div>
-          <div 
-            onClick={() => {
-              setSelectedStatLabel("今月の購入数");
-              setShowStatsModal(true);
-            }}
-            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
-            <div className="flex items-center gap-3">
-              <ShoppingCart className="h-6 w-6 text-purple-400" />
-              <div>
-                <div className="text-2xl font-bold text-purple-400">{monthlyPurchases}</div>
-                <div className="text-gray-400 text-xs">今月の購入数</div>
-              </div>
-            </div>
-          </div>
-          <div 
-            onClick={() => {
-              setSelectedStatLabel("今月の購入金額");
-              setShowStatsModal(true);
-            }}
-            className="bg-[#001529] border border-[#003a70] rounded-xl p-5 cursor-pointer hover:border-[#00a3ff]/60 transition-all">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-6 w-6 text-yellow-400" />
-              <div>
-                <div className="text-2xl font-bold text-yellow-400">¥{monthlyTotal.toLocaleString()}</div>
-                <div className="text-gray-400 text-xs">今月の購入金額</div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6">
-            <h3 className="text-lg font-bold mb-4 text-[#00a3ff]">月別購入金額</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={monthlyData} onClick={(data) => {
-                if (data && data.activePayload) {
-                  setSelectedMonth(data.activePayload[0].payload.month);
-                  setShowMonthlyDetails(true);
-                }
-              }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#003a70" />
-                <XAxis dataKey="month" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip contentStyle={{ backgroundColor: "#001529", border: "1px solid #003a70" }} />
-                <Bar dataKey="amount" fill="#00a3ff" radius={[4, 4, 0, 0]} cursor="pointer" />
-              </BarChart>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">月別購入金額</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.3)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "rgba(15,15,35,0.9)", 
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "12px"
+                  }}
+                  formatter={(value: number) => [`¥${value.toLocaleString()}`, "購入金額"]}
+                />
+                <Area type="monotone" dataKey="amount" stroke="#8b5cf6" fill="url(#colorAmount)" strokeWidth={2} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6">
-            <h3 className="text-lg font-bold mb-4 text-[#00a3ff]">月別購入案件数</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={monthlyData} onClick={(data) => {
-                if (data && data.activePayload) {
-                  setSelectedMonth(data.activePayload[0].payload.month);
-                  setShowMonthlyDetails(true);
-                }
-              }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#003a70" />
-                <XAxis dataKey="month" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip contentStyle={{ backgroundColor: "#001529", border: "1px solid #003a70" }} />
-                <Line type="monotone" dataKey="count" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} cursor="pointer" />
-              </LineChart>
+          
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">月別購入件数</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.3)" fontSize={12} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "rgba(15,15,35,0.9)", 
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "12px"
+                  }}
+                  formatter={(value: number) => [`${value}件`, "購入件数"]}
+                />
+                <Area type="monotone" dataKey="count" stroke="#10b981" fill="url(#colorCount)" strokeWidth={2} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button onClick={() => navigate("/marketplace")} className="bg-[#00a3ff] hover:bg-[#0088cc] text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
-            <span className="text-xl">🔍</span> 案件を探す
+          <button 
+            onClick={() => navigate("/marketplace")}
+            className="btn-premium flex items-center justify-center gap-3 py-5"
+          >
+            <Search className="w-5 h-5" />
+            <span>案件を探す</span>
           </button>
-          <button onClick={() => navigate("/messages")} className="bg-[#001529] border border-[#003a70] hover:border-[#00a3ff] text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
-            <MessageSquare className="h-5 w-5" /> メッセージ
+          <button 
+            onClick={() => navigate("/messages")}
+            className="glass-card flex items-center justify-center gap-3 py-5 text-white hover:bg-white/5 transition-all"
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>メッセージ</span>
           </button>
         </div>
 
         {/* Bid History */}
-        <div className="bg-[#001529] border border-[#003a70] rounded-xl p-6">
-          <h3 className="text-lg font-bold mb-4">入札履歴</h3>
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-white">入札履歴</h3>
+            {bids.length > 5 && (
+              <button className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                すべて見る <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          
           {bids.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">入札履歴はありません</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-white/30" />
+              </div>
+              <p className="text-white/50 mb-2">入札履歴はありません</p>
+              <p className="text-white/30 text-sm">マーケットプレイスで案件を探して入札しましょう</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {bids.slice(0, 5).map((bid: any) => (
-                <div key={bid.id} className="bg-[#000b18] border border-[#003a70] rounded-lg p-4 flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold">{bid.appointmentTitle || "案件"}</p>
-                    <p className="text-sm text-gray-400">入札額: ¥{bid.bidAmount?.toLocaleString()}</p>
+                <div 
+                  key={bid.id} 
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{bid.appointmentTitle || "案件"}</p>
+                      <p className="text-sm text-white/50">入札額: ¥{Number(bid.bidAmount).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs ${
-                    bid.status === "accepted" ? "bg-green-500/20 text-green-400" :
-                    bid.status === "rejected" ? "bg-red-500/20 text-red-400" :
-                    "bg-yellow-500/20 text-yellow-400"
-                  }`}>
-                    {bid.status === "accepted" ? "成約" : bid.status === "rejected" ? "却下" : "入札中"}
-                  </span>
+                  {getStatusBadge(bid.status)}
                 </div>
               ))}
             </div>
@@ -229,82 +269,6 @@ export default function CompanyDashboard() {
       </main>
 
       <Footer />
-
-      {/* Stats Modal */}
-      {showStatsModal && selectedStatLabel && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-[#00a3ff]/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-[#00a3ff]">{selectedStatLabel}の詳細</h3>
-              <button
-                onClick={() => {
-                  setShowStatsModal(false);
-                  setSelectedStatLabel(null);
-                }}
-                className="text-gray-400 hover:text-white transition-colors text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="text-center py-8">
-              <p className="text-gray-400">現在、該当するデータがありません。</p>
-              <p className="text-gray-500 text-sm mt-2">入札や購入が登録されると、ここに表示されます。</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Monthly Details Modal */}
-      {showMonthlyDetails && selectedMonth && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#001529] border border-[#003a70] rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-[#00a3ff]">{selectedMonth}の案件一覧</h3>
-              <button
-                onClick={() => {
-                  setShowMonthlyDetails(false);
-                  setSelectedMonth(null);
-                }}
-                className="text-gray-400 hover:text-white transition-colors text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-4">
-              {bids
-                .filter(bid => bid.status === "accepted")
-                .slice(0, 5)
-                .map((bid: any) => (
-                  <div key={bid.id} className="bg-[#000b18] border border-[#003a70] rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-lg">{bid.appointmentTitle || "案件"}</h4>
-                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">成約</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-400">入札額</p>
-                        <p className="font-semibold text-[#00a3ff]">¥{bid.bidAmount?.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400">ステータス</p>
-                        <p className="font-semibold text-green-400">成約済み</p>
-                      </div>
-                    </div>
-                    {bid.notes && (
-                      <div className="mt-3 pt-3 border-t border-[#003a70]">
-                        <p className="text-gray-400 text-xs">備考</p>
-                        <p className="text-sm">{bid.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              {bids.filter(bid => bid.status === "accepted").length === 0 && (
-                <p className="text-center text-gray-400 py-8">この月の成約案件はありません</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

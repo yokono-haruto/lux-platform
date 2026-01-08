@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -8,7 +8,21 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AIPricePrediction } from "@/components/AIPricePrediction";
 import { NotificationBell } from "@/components/NotificationBell";
-import { MessageSquare, ArrowLeft, Home } from "lucide-react";
+import { MessageBell } from "@/components/MessageBell";
+import { Footer } from "@/components/Footer";
+import { 
+  ArrowLeft, 
+  Search, 
+  Filter,
+  X,
+  Building2,
+  MapPin,
+  DollarSign,
+  CheckCircle,
+  Zap,
+  LogOut,
+  RefreshCw
+} from "lucide-react";
 
 const bidSchema = z.object({
   bidAmount: z.number().positive("金額は正の数値である必要があります"),
@@ -21,12 +35,14 @@ export default function Marketplace() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
     navigate("/login");
   };
+
   const [filters, setFilters] = useState({
     industry: "",
     scale: "",
@@ -84,243 +100,310 @@ export default function Marketplace() {
     reset();
   };
 
+  const resetFilters = () => {
+    setFilters({ industry: "", scale: "", area: "", search: "", minPrice: undefined, maxPrice: undefined });
+  };
+
   if (!user) {
     navigate("/login");
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c]">
+    <div className="min-h-screen gradient-bg flex flex-col">
       {/* Header */}
-      <header className="border-b border-cyan-500/20 bg-[#0a1628]/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container max-w-6xl py-4 px-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-cyan-400 mb-1">LUX マーケットプレイス</h1>
-            <p className="text-sm text-gray-400">アポイント取引プラットフォーム</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
-              title="戻る"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => navigate(`/${user.role}/dashboard`)}
-              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
-              title="ホーム"
-            >
-              <Home className="h-5 w-5" />
-            </button>
-            <NotificationBell />
-            <button
-              onClick={() => navigate("/messages")}
-              className="p-2 text-gray-300 hover:text-cyan-400 transition-colors"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </button>
-            <div className="text-sm text-right">
-              <p className="font-bold text-cyan-300">{user.name}</p>
-              <p className="text-gray-400">{user.companyName}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoggingOut ? "ログアウト中..." : "🚪 ログアウト"}
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Filters */}
-      <section className="py-8 px-8 border-b border-cyan-500/20 bg-[#0f2847]/50">
-        <div className="container max-w-6xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="md:col-span-3">
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">キーワード検索</label>
-              <input
-                type="text"
-                className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                placeholder="案件タイトルで検索..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">業種</label>
-              <input
-                type="text"
-                className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                placeholder="例: 製造業"
-                value={filters.industry}
-                onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">価格範囲 (最小)</label>
-              <input
-                type="number"
-                className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                placeholder="0"
-                value={filters.minPrice || ""}
-                onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-cyan-300 mb-2 uppercase tracking-wider">価格範囲 (最大)</label>
-              <input
-                type="number"
-                className="w-full bg-[#0a1628] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
-                placeholder="1,000,000"
-                value={filters.maxPrice || ""}
-                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => setFilters({ industry: "", scale: "", area: "", search: "", minPrice: undefined, maxPrice: undefined })}
-                className="w-full px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all font-bold"
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/20 border-b border-white/5">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button 
+                onClick={() => navigate("/company/dashboard")}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all"
               >
-                リセット
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-white">マーケットプレイス</h1>
+                <p className="text-xs text-white/40 hidden sm:block">案件を探して入札</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-2.5 rounded-xl border transition-all ${
+                  showFilters 
+                    ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400' 
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Filter className="w-5 h-5" />
+              </button>
+              <NotificationBell />
+              <MessageBell />
+              
+              <div className="hidden md:flex items-center gap-3 ml-2 pl-4 border-l border-white/10">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm">
+                  {user?.name?.charAt(0) || "U"}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-white">{user?.name}</p>
+                  <p className="text-xs text-white/40">{user?.companyName || "電力会社"}</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all disabled:opacity-50"
+              >
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* Appointments List */}
-      <section className="py-8 px-8">
-        <div className="container max-w-6xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-8 w-1 bg-gradient-to-b from-cyan-400 to-blue-500"></div>
-            <h2 className="text-2xl font-bold text-white">利用可能な案件</h2>
+      {/* Search Bar */}
+      <div className="border-b border-white/5 bg-black/10">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+            <input
+              type="text"
+              className="input-premium pl-12"
+              placeholder="案件タイトルで検索..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            />
           </div>
-
-          {appointmentsQuery.isLoading ? (
-            <div className="text-center py-12 text-gray-400">読み込み中...</div>
-          ) : appointmentsQuery.error ? (
-            <div className="text-center py-12 text-red-400">エラーが発生しました</div>
-          ) : appointmentsQuery.data && appointmentsQuery.data.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 border border-dashed border-cyan-500/30 rounded-lg">
-              該当する案件が見つかりませんでした
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {appointmentsQuery.data?.map((appointment) => {
-                const userBid = userBidsQuery.data?.find((bid) => bid.appointmentId === appointment.id);
-                const hasBid = !!userBid;
-
-                return (
-                  <div
-                    key={appointment.id}
-                    className="bg-[#0a1628]/60 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-400/40 transition-all hover:shadow-lg hover:shadow-cyan-500/10"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="text-xl font-bold text-white">{appointment.title}</h3>
-                      <span className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs font-bold text-cyan-400">
-                        {appointment.scale}
-                      </span>
-                    </div>
-                    <div className="space-y-2 mb-4 text-sm">
-                      <p className="text-gray-300">
-                        <span className="text-cyan-400 font-bold">業種:</span> {appointment.industry}
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="text-cyan-400 font-bold">エリア:</span> {appointment.area}
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="text-cyan-400 font-bold">入札設定価格:</span> ¥{appointment.price.toLocaleString()}
-                      </p>
-                      {appointment.monthlyAmount && (
-                        <p className="text-gray-300">
-                          <span className="text-cyan-400 font-bold">月額料金:</span> ¥{appointment.monthlyAmount.toLocaleString()}
-                        </p>
-                      )}
-                      <p className="text-gray-300">
-                        <span className="text-cyan-400 font-bold">ステータス:</span> {appointment.status}
-                      </p>
-                    </div>
-
-                    {hasBid ? (
-                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                        <p className="text-green-400 font-bold mb-2">✓ 入札済み</p>
-                        <p className="text-sm text-gray-300">
-                          入札額: ¥{userBid.bidAmount.toLocaleString()}
-                        </p>
-                        {userBid.notes && (
-                          <p className="text-sm text-gray-400 mt-1">備考: {userBid.notes}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleBidClick(appointment.id)}
-                        className="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg text-white font-bold hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg shadow-cyan-500/20"
-                      >
-                        入札する
-                      </button>
-                    )}
-
-                    <AIPricePrediction
-                      industry={appointment.industry}
-                      scale={appointment.scale}
-                      area={appointment.area}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
-      </section>
+      </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="border-b border-white/5 bg-black/10">
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2">業種</label>
+                <input
+                  type="text"
+                  className="input-premium text-sm py-2.5"
+                  placeholder="例: 製造業"
+                  value={filters.industry}
+                  onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2">価格 (最小)</label>
+                <input
+                  type="number"
+                  className="input-premium text-sm py-2.5"
+                  placeholder="0"
+                  value={filters.minPrice || ""}
+                  onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2">価格 (最大)</label>
+                <input
+                  type="number"
+                  className="input-premium text-sm py-2.5"
+                  placeholder="1,000,000"
+                  value={filters.maxPrice || ""}
+                  onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={resetFilters}
+                  className="w-full py-2.5 px-4 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-all text-sm"
+                >
+                  リセット
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Results Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-indigo-500 to-cyan-500" />
+            利用可能な案件
+            {appointmentsQuery.data && (
+              <span className="text-sm text-white/40 ml-2">({appointmentsQuery.data.length}件)</span>
+            )}
+          </h2>
+          <button
+            onClick={() => appointmentsQuery.refetch()}
+            disabled={appointmentsQuery.isFetching}
+            className="p-2 rounded-lg bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${appointmentsQuery.isFetching ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        {/* Appointments Grid */}
+        {appointmentsQuery.isLoading ? (
+          <div className="text-center py-12">
+            <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <Search className="w-6 h-6 text-indigo-400" />
+            </div>
+            <p className="text-white/50">案件を読み込み中...</p>
+          </div>
+        ) : appointmentsQuery.error ? (
+          <div className="text-center py-12">
+            <p className="text-rose-400">エラーが発生しました</p>
+          </div>
+        ) : appointmentsQuery.data && appointmentsQuery.data.length === 0 ? (
+          <div className="text-center py-12 glass-card">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-white/30" />
+            </div>
+            <p className="text-white/50 mb-2">該当する案件が見つかりませんでした</p>
+            <p className="text-white/30 text-sm">検索条件を変更してお試しください</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {appointmentsQuery.data?.map((appointment) => {
+              const userBid = userBidsQuery.data?.find((bid) => bid.appointmentId === appointment.id);
+              const hasBid = !!userBid;
+
+              return (
+                <div
+                  key={appointment.id}
+                  className="glass-card p-5 sm:p-6"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <h3 className="text-lg font-semibold text-white">{appointment.title}</h3>
+                    <span className="badge-info flex-shrink-0">{appointment.scale}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-white/30" />
+                      <div>
+                        <p className="text-xs text-white/40">業種</p>
+                        <p className="text-sm text-white">{appointment.industry}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-white/30" />
+                      <div>
+                        <p className="text-xs text-white/40">エリア</p>
+                        <p className="text-sm text-white">{appointment.area}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/3 border border-white/5 mb-4">
+                    <div>
+                      <p className="text-xs text-white/40">入札設定価格</p>
+                      <p className="text-xl font-bold text-indigo-400">¥{(appointment.price || 0).toLocaleString()}</p>
+                    </div>
+                    {appointment.monthlyAmount && appointment.monthlyAmount > 0 && (
+                      <div className="text-right">
+                        <p className="text-xs text-white/40">月額料金</p>
+                        <p className="text-lg font-semibold text-emerald-400">¥{appointment.monthlyAmount.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {hasBid ? (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                      <div className="flex items-center gap-2 text-emerald-400 font-medium mb-2">
+                        <CheckCircle className="w-4 h-4" />
+                        入札済み
+                      </div>
+                      <p className="text-sm text-white/70">
+                        入札額: ¥{(userBid.bidAmount || 0).toLocaleString()}
+                      </p>
+                      {userBid.notes && (
+                        <p className="text-xs text-white/50 mt-1">備考: {userBid.notes}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleBidClick(appointment.id)}
+                      className="w-full btn-premium py-3"
+                    >
+                      入札する
+                    </button>
+                  )}
+
+                  <AIPricePrediction
+                    industry={appointment.industry}
+                    scale={appointment.scale}
+                    area={appointment.area}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      <Footer />
 
       {/* Bid Form Modal */}
       {showBidForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0a1628] border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl">
-            <h3 className="text-2xl font-bold text-white mb-6">入札情報を入力</h3>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="glass-card p-6 sm:p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">入札情報を入力</h3>
+              <button
+                onClick={() => {
+                  setShowBidForm(false);
+                  setSelectedAppointmentId(null);
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-cyan-300 mb-2">入札額 *</label>
+                <label className="block text-sm font-medium text-white/70 mb-2">入札額 (円) *</label>
                 <input
                   type="number"
                   {...register("bidAmount", { valueAsNumber: true })}
-                  className="w-full bg-[#0f2847] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all"
+                  className="input-premium"
                   placeholder="例: 500000"
                 />
                 {errors.bidAmount && (
-                  <p className="text-red-400 text-sm mt-1">{errors.bidAmount.message}</p>
+                  <p className="text-rose-400 text-xs mt-1">{errors.bidAmount.message}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-bold text-cyan-300 mb-2">備考（任意）</label>
+                <label className="block text-sm font-medium text-white/70 mb-2">備考（任意）</label>
                 <textarea
                   {...register("notes")}
-                  className="w-full bg-[#0f2847] border border-cyan-500/30 rounded-lg px-4 py-2 text-white focus:border-cyan-400 outline-none transition-all h-24"
-                  placeholder="補足情報があれば入力してください"
+                  className="input-premium min-h-[100px]"
+                  placeholder="入札に関する補足事項があれば入力してください"
                 />
               </div>
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowBidForm(false);
                     setSelectedAppointmentId(null);
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-500/10 border border-gray-500/30 rounded-lg text-gray-400 hover:bg-gray-500/20 hover:border-gray-500/50 transition-all font-bold"
+                  className="py-3 px-6 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-all order-2 sm:order-1"
                 >
                   キャンセル
                 </button>
                 <button
                   type="submit"
                   disabled={createBidMutation.isPending}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg text-white font-bold hover:from-cyan-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-premium py-3 disabled:opacity-50 order-1 sm:order-2 sm:ml-auto"
                 >
-                  {createBidMutation.isPending ? "送信中..." : "入札する"}
+                  {createBidMutation.isPending ? "送信中..." : "入札を確定"}
                 </button>
               </div>
             </form>

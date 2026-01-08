@@ -35,16 +35,18 @@ async function initializeDatabase() {
     
     const { drizzle } = await import("drizzle-orm/better-sqlite3");
     const Database = (await import("better-sqlite3")).default;
-    const { users, appointments, bids, transactions } = await import("../../drizzle/schema");
-    const { sql } = await import("drizzle-orm");
+    const { users, appointments, bids } = await import("../../drizzle/schema");
     
     const sqlite = new Database("local.db");
     const db = drizzle(sqlite);
     
+    // Helper function to get current timestamp in milliseconds
+    const nowMs = () => Date.now();
+    
     // Create tables if they don't exist
     console.log("📋 Creating tables...");
     
-    // Users table
+    // Users table - using milliseconds for timestamps
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,15 +60,16 @@ async function initializeDatabase() {
         companyPhone TEXT,
         companyIndustry TEXT,
         isActive INTEGER DEFAULT 1 NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
         lastSignedIn INTEGER
       )
     `);
     
-    // Appointments table
+    // Drop and recreate appointments table to ensure correct schema with milliseconds
+    sqlite.exec(`DROP TABLE IF EXISTS appointments`);
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS appointments (
+      CREATE TABLE appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         createdBy INTEGER NOT NULL,
         title TEXT NOT NULL,
@@ -74,12 +77,14 @@ async function initializeDatabase() {
         scale TEXT NOT NULL,
         area TEXT NOT NULL,
         price INTEGER DEFAULT 0 NOT NULL,
+        monthlyAmount INTEGER DEFAULT 0 NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'active' NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
+    console.log("✅ Appointments table recreated with correct schema (milliseconds timestamps)");
     
     // Bids table - Drop and recreate to ensure correct schema
     sqlite.exec(`DROP TABLE IF EXISTS bids`);
@@ -91,8 +96,8 @@ async function initializeDatabase() {
         bidAmount TEXT NOT NULL,
         status TEXT DEFAULT 'pending' NOT NULL,
         notes TEXT,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
     console.log("✅ Bids table recreated with correct schema");
@@ -106,8 +111,35 @@ async function initializeDatabase() {
         buyerId INTEGER NOT NULL,
         amount TEXT NOT NULL,
         status TEXT DEFAULT 'pending' NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    
+    // Invoices table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month TEXT NOT NULL,
+        totalAmount TEXT NOT NULL,
+        status TEXT DEFAULT 'draft' NOT NULL,
+        pdfUrl TEXT,
+        pdfKey TEXT,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    
+    // Invoice items table
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS invoiceItems (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoiceId INTEGER NOT NULL,
+        bidId INTEGER NOT NULL,
+        appointmentTitle TEXT NOT NULL,
+        bidderCompanyName TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
     
@@ -121,7 +153,7 @@ async function initializeDatabase() {
         content TEXT NOT NULL,
         isRead INTEGER DEFAULT 0 NOT NULL,
         link TEXT,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
     
@@ -134,7 +166,7 @@ async function initializeDatabase() {
         appointmentId INTEGER,
         content TEXT NOT NULL,
         isRead INTEGER DEFAULT 0 NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
     
@@ -154,13 +186,16 @@ async function initializeDatabase() {
       passwordHash: passwordHash,
       role: "admin",
       isActive: true,
-      openId: "lux_yokono"
+      openId: "lux_yokono",
+      createdAt: new Date(),
+      updatedAt: new Date()
     }).onConflictDoUpdate({
       target: users.email,
       set: {
         passwordHash: passwordHash,
         role: "admin",
-        isActive: true
+        isActive: true,
+        updatedAt: new Date()
       }
     });
     
@@ -182,13 +217,16 @@ async function initializeDatabase() {
       role: "sales",
       companyName: "LUX営業部",
       isActive: true,
-      openId: "lux_sales"
+      openId: "lux_sales",
+      createdAt: new Date(),
+      updatedAt: new Date()
     }).onConflictDoUpdate({
       target: users.email,
       set: {
         passwordHash: salesPasswordHash,
         role: "sales",
-        isActive: true
+        isActive: true,
+        updatedAt: new Date()
       }
     });
     
@@ -210,13 +248,16 @@ async function initializeDatabase() {
       role: "power_company",
       companyName: "テスト電力株式会社",
       isActive: true,
-      openId: "lux_company"
+      openId: "lux_company",
+      createdAt: new Date(),
+      updatedAt: new Date()
     }).onConflictDoUpdate({
       target: users.email,
       set: {
         passwordHash: companyPasswordHash,
         role: "power_company",
-        isActive: true
+        isActive: true,
+        updatedAt: new Date()
       }
     });
     
@@ -225,7 +266,7 @@ async function initializeDatabase() {
     console.log("🔑 Password: company2025");
     console.log("🆔 User ID: lux_company");
     
-  } catch (e) {
+  } catch (e: any) {
     console.error("❌ Database initialization error:", e.message);
     throw e;
   }

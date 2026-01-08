@@ -3,10 +3,19 @@ import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { AdminHeader } from "@/components/AdminHeader";
-import { Trash2 } from "lucide-react";
+import { Footer } from "@/components/Footer";
+import { 
+  ArrowLeft, 
+  Plus, 
+  X, 
+  Trash2, 
+  Users,
+  Building2,
+  Briefcase,
+  Shield,
+  Mail,
+  User
+} from "lucide-react";
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -71,79 +80,140 @@ export default function UserManagement() {
   };
 
   const handleDeleteUser = (userId: number) => {
-    if (window.confirm("本当にこのユーザーを完全に削除しますか？この操作は取り消せません。")) {
+    if (window.confirm("本当にこのユーザーを削除しますか？この操作は取り消せません。")) {
       deleteUserMutation.mutate(userId);
     }
   };
 
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium">
+            <Shield className="w-3 h-3" />
+            管理者
+          </span>
+        );
+      case "power_company":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium">
+            <Building2 className="w-3 h-3" />
+            電力会社
+          </span>
+        );
+      case "sales":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+            <Briefcase className="w-3 h-3" />
+            営業部隊
+          </span>
+        );
+      default:
+        return <span className="badge-default">{role}</span>;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#0a1628] text-white">
-      <AdminHeader title="LUX ユーザー管理" subtitle="企業ユーザーのアカウント作成・管理" />
-
-      <div className="container max-w-6xl mx-auto py-8 px-8">
-        {/* Create Button */}
-        <div className="mb-8 flex justify-end">
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/50"
-          >
-            {showCreateForm ? "キャンセル" : "+ 新規ユーザー作成"}
-          </button>
+    <div className="min-h-screen gradient-bg flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-black/20 border-b border-white/5">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button 
+                onClick={() => navigate("/admin/dashboard")}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-white">ユーザー管理</h1>
+                <p className="text-xs text-white/40 hidden sm:block">User Management</p>
+              </div>
+            </div>
+            
+            {!showCreateForm ? (
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="btn-premium flex items-center gap-2 py-2.5 px-4 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">新規作成</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCreateForm(false)}
+                className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
+      </header>
 
+      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Create Form */}
         {showCreateForm && (
-          <div className="mb-12 bg-[#0f2847] border border-cyan-500/30 rounded-xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-cyan-400 mb-6">新規ユーザー作成</h2>
-            <form onSubmit={handleCreateUser} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass-card p-6 sm:p-8 mb-6 sm:mb-8">
+            <h2 className="text-xl font-bold text-white mb-6">新規ユーザー作成</h2>
+            <form onSubmit={handleCreateUser} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">メールアドレス *</label>
-                  <Input
+                  <label className="block text-sm font-medium text-white/70 mb-2">ユーザーID *</label>
+                  <input
                     required
-                    type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
+                    className="input-premium"
+                    placeholder="例: lux_tanaka"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">名前 *</label>
-                  <Input
+                  <label className="block text-sm font-medium text-white/70 mb-2">名前 *</label>
+                  <input
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
+                    className="input-premium"
+                    placeholder="例: 田中太郎"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">パスワード *</label>
-                  <Input
+                  <label className="block text-sm font-medium text-white/70 mb-2">パスワード *</label>
+                  <input
                     required
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="bg-[#0a1628] border-cyan-500/50 text-white focus:border-cyan-400"
+                    className="input-premium"
                     placeholder="8文字以上"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-cyan-300 mb-2">ロール *</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">ロール *</label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                    className="w-full bg-[#0a1628] border border-cyan-500/50 rounded-md px-3 py-2 text-white focus:border-cyan-400 outline-none"
+                    className="input-premium"
                   >
                     <option value="power_company">電力会社</option>
                     <option value="sales">営業部隊</option>
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="py-3 px-6 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-all order-2 sm:order-1"
+                >
+                  キャンセル
+                </button>
                 <button
                   type="submit"
                   disabled={createUserMutation.isPending}
-                  className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/50 disabled:opacity-50"
+                  className="btn-premium py-3 disabled:opacity-50 order-1 sm:order-2 sm:ml-auto"
                 >
                   {createUserMutation.isPending ? "作成中..." : "ユーザーを作成"}
                 </button>
@@ -153,60 +223,126 @@ export default function UserManagement() {
         )}
 
         {/* Users List */}
-        <div className="bg-[#0f2847] border border-cyan-500/30 rounded-xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold text-cyan-400 mb-6">登録済みユーザー一覧</h2>
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-indigo-500 to-cyan-500" />
+            登録済みユーザー
+            {usersQuery.data && (
+              <span className="text-sm text-white/40 ml-2">({usersQuery.data.length}名)</span>
+            )}
+          </h2>
+          
           {usersQuery.isLoading ? (
-            <div className="text-center py-12 text-gray-400">読み込み中...</div>
-          ) : usersQuery.data && usersQuery.data.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-cyan-500/30 bg-[#0a1628]/50">
-                    <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">名前 / メール</th>
-                    <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">ロール</th>
-                    <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider">ステータス</th>
-                    <th className="py-4 px-6 text-cyan-300 font-bold uppercase text-xs tracking-wider text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usersQuery.data.map((u: any) => (
-                    <tr key={u.id} className="border-b border-cyan-500/10 hover:bg-cyan-500/5 transition-colors">
-                      <td className="py-4 px-6">
-                        <p className="font-bold text-white">{u.name}</p>
-                        <p className="text-xs text-gray-400">{u.email}</p>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="px-2 py-1 bg-cyan-500/10 text-cyan-400 text-[10px] font-bold uppercase border border-cyan-500/30 rounded">
-                          {u.role === "power_company" ? "電力会社" : u.role === "sales" ? "営業部隊" : "管理者"}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        {u.isActive ? (
-                          <span className="text-green-400 text-sm font-bold">● 有効</span>
-                        ) : (
-                          <span className="text-red-400 text-sm font-bold">● 無効</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        {u.role !== 'admin' && (
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="text-center py-12">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Users className="w-6 h-6 text-indigo-400" />
+              </div>
+              <p className="text-white/50">読み込み中...</p>
             </div>
+          ) : usersQuery.data && usersQuery.data.length > 0 ? (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="py-3 px-4 text-left text-xs font-medium text-white/50 uppercase tracking-wider">ユーザー</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-white/50 uppercase tracking-wider">ロール</th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-white/50 uppercase tracking-wider">ステータス</th>
+                      <th className="py-3 px-4 text-right text-xs font-medium text-white/50 uppercase tracking-wider">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {usersQuery.data.map((u: any) => (
+                      <tr key={u.id} className="hover:bg-white/3 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                              {u.name?.charAt(0) || "U"}
+                            </div>
+                            <div>
+                              <p className="font-medium text-white">{u.name}</p>
+                              <p className="text-xs text-white/40">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          {getRoleBadge(u.role)}
+                        </td>
+                        <td className="py-4 px-4">
+                          {u.isActive ? (
+                            <span className="badge-success">有効</span>
+                          ) : (
+                            <span className="badge-error">無効</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          {u.role !== 'admin' && (
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-2 rounded-lg bg-white/5 text-white/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-3">
+                {usersQuery.data.map((u: any) => (
+                  <div 
+                    key={u.id}
+                    className="p-4 rounded-xl bg-white/3 border border-white/5"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                          {u.name?.charAt(0) || "U"}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{u.name}</p>
+                          <p className="text-xs text-white/40">{u.email}</p>
+                        </div>
+                      </div>
+                      {u.role !== 'admin' && (
+                        <button
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="p-2 rounded-lg bg-white/5 text-white/50 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getRoleBadge(u.role)}
+                      {u.isActive ? (
+                        <span className="badge-success">有効</span>
+                      ) : (
+                        <span className="badge-error">無効</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="text-center py-12 text-gray-400">ユーザーが見つかりません</div>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-white/30" />
+              </div>
+              <p className="text-white/50 mb-2">ユーザーがいません</p>
+              <p className="text-white/30 text-sm">新規作成ボタンからユーザーを登録してください</p>
+            </div>
           )}
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }
