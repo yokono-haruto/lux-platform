@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import * as authService from "../auth";
 import * as db from "../db";
 import bcrypt from "bcrypt";
+import { logActivity } from "../sheets";
 
 const loginSchema = z.object({
   email: z.string(),
@@ -59,6 +60,9 @@ export const authRouter = router({
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
         
+        // ログイン成功をスプレッドシートに記録
+        logActivity(user.id, user.name || 'admin', 'login', '管理者ログイン', ctx.req?.ip || 'unknown').catch(console.error);
+        
         return {
           user: {
             id: user.id,
@@ -94,6 +98,9 @@ export const authRouter = router({
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
         
+        // ログイン成功をスプレッドシートに記録
+        logActivity(user.id, user.name || 'sales', 'login', '営業部隊ログイン', ctx.req?.ip || 'unknown').catch(console.error);
+        
         return {
           user: {
             id: user.id,
@@ -128,6 +135,9 @@ export const authRouter = router({
           sameSite: "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
+        
+        // ログイン成功をスプレッドシートに記録
+        logActivity(user.id, user.name || 'company', 'login', '電力会社ログイン', ctx.req?.ip || 'unknown').catch(console.error);
         
         return {
           user: {

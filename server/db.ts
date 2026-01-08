@@ -1,4 +1,5 @@
 import { eq, or, and, like, gte, lte } from "drizzle-orm";
+import { syncUser, syncAppointment, syncBid, logActivity, logError } from "./sheets";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { 
   InsertUser, users, appointments, bids, invoices, invoiceItems, 
@@ -131,7 +132,24 @@ export async function createUserWithPassword(data: {
   });
   const userId = Number(result.lastInsertRowid);
   const rows = await db.select().from(users).where(eq(users.id, userId));
-  return rows[0];
+  const user = rows[0];
+  
+  // スプレッドシートに同期
+  try {
+    await syncUser({
+      id: user.id,
+      email: user.email || '',
+      name: user.name || '',
+      role: user.role,
+      openId: user.openId,
+      companyName: user.companyName || '',
+      isActive: user.isActive ?? true,
+    }, 'create');
+  } catch (e) {
+    console.error('[Sheets] ユーザー同期エラー:', e);
+  }
+  
+  return user;
 }
 
 export async function updateUser(userId: number, data: Partial<InsertUser>): Promise<void> {
@@ -176,7 +194,26 @@ export async function createAppointment(data: InsertAppointment): Promise<Appoin
   const result = await db.insert(appointments).values(dataWithTimestamp);
   const appointmentId = Number(result.lastInsertRowid);
   const rows = await db.select().from(appointments).where(eq(appointments.id, appointmentId));
-  return rows[0];
+  const appointment = rows[0];
+  
+  // スプレッドシートに同期
+  try {
+    await syncAppointment({
+      id: appointment.id,
+      title: appointment.title,
+      industry: appointment.industry,
+      scale: appointment.scale,
+      area: appointment.area,
+      bidPrice: appointment.bidPrice || 0,
+      monthlyAmount: appointment.monthlyAmount || 0,
+      status: appointment.status,
+      description: appointment.description || '',
+    }, 'create');
+  } catch (e) {
+    console.error('[Sheets] 案件同期エラー:', e);
+  }
+  
+  return appointment;
 }
 
 export async function getAppointments(filters: { 
@@ -244,7 +281,23 @@ export async function createBid(data: { appointmentId: number; bidderId: number;
   const result = await db.insert(bids).values(dataWithTimestamp);
   const bidId = Number(result.lastInsertRowid);
   const rows = await db.select().from(bids).where(eq(bids.id, bidId));
-  return rows[0];
+  const bid = rows[0];
+  
+  // スプレッドシートに同期
+  try {
+    await syncBid({
+      id: bid.id,
+      appointmentId: bid.appointmentId,
+      bidderId: bid.bidderId,
+      amount: parseFloat(bid.bidAmount) || 0,
+      status: bid.status || 'pending',
+      message: bid.notes || '',
+    }, 'create');
+  } catch (e) {
+    console.error('[Sheets] 入札同期エラー:', e);
+  }
+  
+  return bid;
 }
 
 export async function getBidsByUserId(userId: number) {

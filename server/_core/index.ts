@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import bcrypt from "bcrypt";
 import { initSentry } from "../lib/sentry";
+import { initializeSpreadsheet, logSystem } from "../sheets";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -278,6 +279,9 @@ async function startServer() {
   
   // Initialize database before starting server
   await initializeDatabase();
+  
+  // Initialize Google Sheets integration
+  await initializeSpreadsheet();
   
   const app = express();
   const server = createServer(app);

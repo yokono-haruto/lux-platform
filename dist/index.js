@@ -158,8 +158,312 @@ var UNAUTHED_ERR_MSG = "Please login (10001)";
 var NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
 
 // server/db.ts
-init_schema();
 import { eq, or, and, like, gte, lte } from "drizzle-orm";
+
+// server/sheets.ts
+import { google } from "googleapis";
+var SPREADSHEET_ID = "1RKsFtWkQjmSjY54sWmPtL826IGbiLQgdVm5VoOALIFE";
+var SHEETS = {
+  USERS: "users",
+  APPOINTMENTS: "appointments",
+  BIDS: "bids",
+  ACTIVITY_LOG: "activity_log",
+  SYSTEM_LOG: "system_log",
+  ERROR_LOG: "error_log",
+  PERFORMANCE_LOG: "performance_log"
+};
+var sheetsApi = null;
+var isInitialized = false;
+var LOCAL_CREDENTIALS = {
+  type: "service_account",
+  project_id: "glossy-ally-483702-h3",
+  private_key_id: "9162e1d1ec5f287bf1c3b1debf3272887f766162",
+  private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1N4pFrCgFIASa\nPJjLiXgWutjJwxs8T8EJDqZs9g/QxVsDi+vCrHkHssSMLGVcPCc/cMJ87yFezo6Z\nc/+hSnhqE/4ZDY/3yruj+z8yYmEoF4QiUg6iOemyc6evqoFZh5k1RFk16Mv224En\nDf7N+OzBPO9kIr4wyRmqK3eTgRai0c/PbHsflwwORwtAvjUUaz9+WqLzYlDcSUYs\ntFgM/qsb7NPRJoCkDP4uZ9DgE1Hu7dliCBggFw6wQI36VkqC/MP//i6gCYB4O8wz\nT/QIgjukTU0PgvebyILUaiHz5RPle0w2JW5tbqIyaUPtEofxRrBifYvqhXFocZGa\nXuy+um/LAgMBAAECggEAGMXoHgCGvgtI+x7NPTHkm/2HX676PQNNc86wEKrjXEUb\n3T8WXUK/uZOGNqq7towLSisWOLG7bEms3oHS5eVCKITlfTOd7/V5M6sdUhF3Ol2w\nn2fRU/sPyBNIeVrD8Q3OSM+4VFwn70NwWKWbT4631ZjeGbXS2I99SzFDA66nfggZ\nWQqjb/tqS36mXXz97hAHPnHDmvJfVv5/n6OrARSWoanJ95WoER7mkK50s1Pts7sQ\nAmf1erL7eXynNR0hAN1Heueupi8BUHGz6X1Np61w/pv/BkDp8j3Aa3G6sH1EiV38\nNFsjUt9iyT4dWtyIvA7ljqwGPTC/bZQJXtXvehJjJQKBgQDl9/OufeNAmQ3L4FFq\nMI7xDHjHX3UeMuLgl6bUDnBtgzT2eRGlYCYh6qJ6L2KRXF9AyfkHAIXPjON3uQCk\nqRPUhiJRVN46tsXSJp/4fkRVRS0qfIZhgzuvj4VI9XBZo5KVLXKxEzdptCs2TRz4\ngMmch/6MF5OxVknidC3lgv2bdwKBgQDJutwuPL6oxruXnnfZKUmKiXSlahXQAjyW\n7P2hCtb/m383sH2tHDQr++zsADB7eJXLbZzqrB/YbLlT+122QL/ekbV0XSgiWCaL\nfuWLmzi5GqECh90T4lWq/QQuGHvBjK1iM7nK1ZVFwxqgyqW2SIJ6wZ/xaWk9LFlU\nDwOSfmP7TQKBgCS9Nhr8VZ/uU7vsfFVAqLVtzqXbZDSM4J4M3EQogmGcgouVz/Hh\nqHXmrEpk45Rhc35ARh6OQNJlqblovuePc3GSdE0WB+LNbFEkho4GbhhJUuvktPtD\nIffsL9j2DRrk/PgEKLyNW17xv62PKD+zI4J0X4A2DAxawrcA5Iw0HxwFAoGAfoEJ\n1o0NWzXVKg2cRriXf6MXXSwbpafhaxwPKVBs5zoSG1A4X7iSFwsS1iSAQs2p0jpY\n7uklx0jXJ404hTQxnldtnR1WL8Nr2IqpVFTwy1OhqL6eqvuCkYm9d1KvOP8JM84Q\nMtyhkW/6YN7z8E2kVWra7D8YWd5X3ljT+qf79vkCgYEA3UENltxRGyOSD2vqmZej\n6zvCQKyYarZTRfbzNCO9CWVUoA+ns3zrt9dndN600XDFNHRLALloaa5ZsvbvZQqB\n6nSS1KXTWq5ThqXFPUU5PMjYf/MAEayMW9YXR4tytEIr+PF9R7+5wJZ6Cf1CgcqW\nnOpgFZtEXLlij9EO2qBxUvU=\n-----END PRIVATE KEY-----\n",
+  client_email: "lux-sheets@glossy-ally-483702-h3.iam.gserviceaccount.com",
+  client_id: "117396812487186723260",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token"
+};
+async function initializeSheets() {
+  if (isInitialized && sheetsApi) return sheetsApi;
+  try {
+    let credentials;
+    if (process.env.GOOGLE_SHEETS_CREDENTIALS) {
+      try {
+        credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
+      } catch (e) {
+        console.log("[Sheets] \u74B0\u5883\u5909\u6570\u306E\u30D1\u30FC\u30B9\u306B\u5931\u6557\u3001\u30ED\u30FC\u30AB\u30EB\u8A8D\u8A3C\u60C5\u5831\u3092\u4F7F\u7528");
+        credentials = LOCAL_CREDENTIALS;
+      }
+    } else {
+      console.log("[Sheets] \u74B0\u5883\u5909\u6570\u304C\u672A\u8A2D\u5B9A\u3001\u30ED\u30FC\u30AB\u30EB\u8A8D\u8A3C\u60C5\u5831\u3092\u4F7F\u7528");
+      credentials = LOCAL_CREDENTIALS;
+    }
+    if (!credentials.client_email || !credentials.private_key) {
+      console.log("[Sheets] \u8A8D\u8A3C\u60C5\u5831\u304C\u4E0D\u5B8C\u5168\u3067\u3059\u3002\u30B9\u30D7\u30EC\u30C3\u30C9\u30B7\u30FC\u30C8\u9023\u643A\u306F\u7121\u52B9\u3067\u3059\u3002");
+      return null;
+    }
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+    });
+    sheetsApi = google.sheets({ version: "v4", auth });
+    isInitialized = true;
+    console.log("[Sheets] Google Sheets API \u521D\u671F\u5316\u5B8C\u4E86");
+    return sheetsApi;
+  } catch (error) {
+    console.error("[Sheets] \u521D\u671F\u5316\u30A8\u30E9\u30FC:", error);
+    return null;
+  }
+}
+async function ensureSheetExists(sheetName, headers) {
+  const sheets = await initializeSheets();
+  if (!sheets) return;
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID
+    });
+    const existingSheets = response.data.sheets?.map((s) => s.properties?.title) || [];
+    if (!existingSheets.includes(sheetName)) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: sheetName
+                }
+              }
+            }
+          ]
+        }
+      });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A1`,
+        valueInputOption: "RAW",
+        requestBody: {
+          values: [headers]
+        }
+      });
+      console.log(`[Sheets] \u30B7\u30FC\u30C8 "${sheetName}" \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F`);
+    }
+  } catch (error) {
+    console.error(`[Sheets] \u30B7\u30FC\u30C8 "${sheetName}" \u306E\u78BA\u8A8D/\u4F5C\u6210\u30A8\u30E9\u30FC:`, error);
+  }
+}
+async function appendRow(sheetName, values) {
+  const sheets = await initializeSheets();
+  if (!sheets) return;
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!A:Z`,
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: {
+        values: [values]
+      }
+    });
+  } catch (error) {
+    console.error(`[Sheets] \u884C\u8FFD\u52A0\u30A8\u30E9\u30FC (${sheetName}):`, error);
+  }
+}
+function formatDateTime(date = /* @__PURE__ */ new Date()) {
+  return date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+}
+async function syncUser(user, action) {
+  await ensureSheetExists(SHEETS.USERS, [
+    "ID",
+    "\u30E1\u30FC\u30EB",
+    "\u540D\u524D",
+    "\u30ED\u30FC\u30EB",
+    "OpenID",
+    "\u4F1A\u793E\u540D",
+    "\u6709\u52B9",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await appendRow(SHEETS.USERS, [
+    user.id,
+    user.email,
+    user.name,
+    user.role,
+    user.openId || "",
+    user.companyName || "",
+    user.isActive ? "\u6709\u52B9" : "\u7121\u52B9",
+    formatDateTime(),
+    action
+  ]);
+  await logActivity("system", "user_sync", `\u30E6\u30FC\u30B6\u30FC ${action}: ${user.email}`, { userId: user.id });
+}
+async function syncAppointment(appointment, action) {
+  await ensureSheetExists(SHEETS.APPOINTMENTS, [
+    "ID",
+    "\u30BF\u30A4\u30C8\u30EB",
+    "\u696D\u7A2E",
+    "\u898F\u6A21",
+    "\u5730\u57DF",
+    "\u5165\u672D\u4FA1\u683C",
+    "\u6708\u984D",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u8AAC\u660E",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await appendRow(SHEETS.APPOINTMENTS, [
+    appointment.id,
+    appointment.title,
+    appointment.industry,
+    appointment.scale,
+    appointment.area,
+    appointment.bidPrice,
+    appointment.monthlyAmount || 0,
+    appointment.status,
+    appointment.description || "",
+    formatDateTime(),
+    action
+  ]);
+  await logActivity("system", "appointment_sync", `\u6848\u4EF6 ${action}: ${appointment.title}`, { appointmentId: appointment.id });
+}
+async function syncBid(bid, action) {
+  await ensureSheetExists(SHEETS.BIDS, [
+    "ID",
+    "\u6848\u4EF6ID",
+    "\u5165\u672D\u8005ID",
+    "\u91D1\u984D",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u30E1\u30C3\u30BB\u30FC\u30B8",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await appendRow(SHEETS.BIDS, [
+    bid.id,
+    bid.appointmentId,
+    bid.bidderId,
+    bid.amount,
+    bid.status,
+    bid.message || "",
+    formatDateTime(),
+    action
+  ]);
+  await logActivity("system", "bid_sync", `\u5165\u672D ${action}: \u6848\u4EF6${bid.appointmentId}`, { bidId: bid.id });
+}
+async function logActivity(userId, action, detail, metadata) {
+  await ensureSheetExists(SHEETS.ACTIVITY_LOG, [
+    "\u65E5\u6642",
+    "\u30E6\u30FC\u30B6\u30FCID",
+    "\u30A2\u30AF\u30B7\u30E7\u30F3",
+    "\u8A73\u7D30",
+    "\u30E1\u30BF\u30C7\u30FC\u30BF",
+    "IP\u30A2\u30C9\u30EC\u30B9",
+    "\u30E6\u30FC\u30B6\u30FC\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8"
+  ]);
+  await appendRow(SHEETS.ACTIVITY_LOG, [
+    formatDateTime(),
+    userId,
+    action,
+    detail,
+    metadata ? JSON.stringify(metadata) : "",
+    metadata?.ip || "",
+    metadata?.userAgent || ""
+  ]);
+}
+async function logSystem(event, detail, status = "info") {
+  await ensureSheetExists(SHEETS.SYSTEM_LOG, [
+    "\u65E5\u6642",
+    "\u30A4\u30D9\u30F3\u30C8",
+    "\u8A73\u7D30",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u74B0\u5883"
+  ]);
+  await appendRow(SHEETS.SYSTEM_LOG, [
+    formatDateTime(),
+    event,
+    detail,
+    status,
+    process.env.NODE_ENV || "development"
+  ]);
+}
+async function initializeSpreadsheet() {
+  const sheets = await initializeSheets();
+  if (!sheets) {
+    console.log("[Sheets] \u30B9\u30D7\u30EC\u30C3\u30C9\u30B7\u30FC\u30C8\u9023\u643A\u306F\u30B9\u30AD\u30C3\u30D7\u3055\u308C\u307E\u3057\u305F");
+    return false;
+  }
+  await ensureSheetExists(SHEETS.USERS, [
+    "ID",
+    "\u30E1\u30FC\u30EB",
+    "\u540D\u524D",
+    "\u30ED\u30FC\u30EB",
+    "OpenID",
+    "\u4F1A\u793E\u540D",
+    "\u6709\u52B9",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await ensureSheetExists(SHEETS.APPOINTMENTS, [
+    "ID",
+    "\u30BF\u30A4\u30C8\u30EB",
+    "\u696D\u7A2E",
+    "\u898F\u6A21",
+    "\u5730\u57DF",
+    "\u5165\u672D\u4FA1\u683C",
+    "\u6708\u984D",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u8AAC\u660E",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await ensureSheetExists(SHEETS.BIDS, [
+    "ID",
+    "\u6848\u4EF6ID",
+    "\u5165\u672D\u8005ID",
+    "\u91D1\u984D",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u30E1\u30C3\u30BB\u30FC\u30B8",
+    "\u6700\u7D42\u66F4\u65B0",
+    "\u64CD\u4F5C"
+  ]);
+  await ensureSheetExists(SHEETS.ACTIVITY_LOG, [
+    "\u65E5\u6642",
+    "\u30E6\u30FC\u30B6\u30FCID",
+    "\u30A2\u30AF\u30B7\u30E7\u30F3",
+    "\u8A73\u7D30",
+    "\u30E1\u30BF\u30C7\u30FC\u30BF",
+    "IP\u30A2\u30C9\u30EC\u30B9",
+    "\u30E6\u30FC\u30B6\u30FC\u30A8\u30FC\u30B8\u30A7\u30F3\u30C8"
+  ]);
+  await ensureSheetExists(SHEETS.SYSTEM_LOG, [
+    "\u65E5\u6642",
+    "\u30A4\u30D9\u30F3\u30C8",
+    "\u8A73\u7D30",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9",
+    "\u74B0\u5883"
+  ]);
+  await ensureSheetExists(SHEETS.ERROR_LOG, [
+    "\u65E5\u6642",
+    "\u30A8\u30E9\u30FC\u7A2E\u5225",
+    "\u30E1\u30C3\u30BB\u30FC\u30B8",
+    "\u30B9\u30BF\u30C3\u30AF\u30C8\u30EC\u30FC\u30B9",
+    "\u30B3\u30F3\u30C6\u30AD\u30B9\u30C8"
+  ]);
+  await ensureSheetExists(SHEETS.PERFORMANCE_LOG, [
+    "\u65E5\u6642",
+    "\u30A8\u30F3\u30C9\u30DD\u30A4\u30F3\u30C8",
+    "\u30E1\u30BD\u30C3\u30C9",
+    "\u30EC\u30B9\u30DD\u30F3\u30B9\u6642\u9593(ms)",
+    "\u30B9\u30C6\u30FC\u30BF\u30B9\u30B3\u30FC\u30C9",
+    "\u30E6\u30FC\u30B6\u30FCID"
+  ]);
+  await logSystem("server_start", "\u30B5\u30FC\u30D0\u30FC\u304C\u8D77\u52D5\u3057\u307E\u3057\u305F", "success");
+  console.log("[Sheets] \u5168\u30B7\u30FC\u30C8\u306E\u521D\u671F\u5316\u5B8C\u4E86");
+  return true;
+}
+
+// server/db.ts
+init_schema();
 import { drizzle } from "drizzle-orm/better-sqlite3";
 
 // server/_core/env.ts
@@ -273,7 +577,21 @@ async function createUserWithPassword(data) {
   });
   const userId = Number(result.lastInsertRowid);
   const rows = await db.select().from(users).where(eq(users.id, userId));
-  return rows[0];
+  const user = rows[0];
+  try {
+    await syncUser({
+      id: user.id,
+      email: user.email || "",
+      name: user.name || "",
+      role: user.role,
+      openId: user.openId,
+      companyName: user.companyName || "",
+      isActive: user.isActive ?? true
+    }, "create");
+  } catch (e) {
+    console.error("[Sheets] \u30E6\u30FC\u30B6\u30FC\u540C\u671F\u30A8\u30E9\u30FC:", e);
+  }
+  return user;
 }
 async function updateUser(userId, data) {
   const db = await getDb();
@@ -310,7 +628,23 @@ async function createAppointment(data) {
   const result = await db.insert(appointments).values(dataWithTimestamp);
   const appointmentId = Number(result.lastInsertRowid);
   const rows = await db.select().from(appointments).where(eq(appointments.id, appointmentId));
-  return rows[0];
+  const appointment = rows[0];
+  try {
+    await syncAppointment({
+      id: appointment.id,
+      title: appointment.title,
+      industry: appointment.industry,
+      scale: appointment.scale,
+      area: appointment.area,
+      bidPrice: appointment.bidPrice || 0,
+      monthlyAmount: appointment.monthlyAmount || 0,
+      status: appointment.status,
+      description: appointment.description || ""
+    }, "create");
+  } catch (e) {
+    console.error("[Sheets] \u6848\u4EF6\u540C\u671F\u30A8\u30E9\u30FC:", e);
+  }
+  return appointment;
 }
 async function getAppointments(filters) {
   const db = await getDb();
@@ -360,7 +694,20 @@ async function createBid(data) {
   const result = await db.insert(bids).values(dataWithTimestamp);
   const bidId = Number(result.lastInsertRowid);
   const rows = await db.select().from(bids).where(eq(bids.id, bidId));
-  return rows[0];
+  const bid = rows[0];
+  try {
+    await syncBid({
+      id: bid.id,
+      appointmentId: bid.appointmentId,
+      bidderId: bid.bidderId,
+      amount: parseFloat(bid.bidAmount) || 0,
+      status: bid.status || "pending",
+      message: bid.notes || ""
+    }, "create");
+  } catch (e) {
+    console.error("[Sheets] \u5165\u672D\u540C\u671F\u30A8\u30E9\u30FC:", e);
+  }
+  return bid;
 }
 async function getBidsByUserId(userId) {
   const db = await getDb();
@@ -983,6 +1330,7 @@ var authRouter = router({
         maxAge: 7 * 24 * 60 * 60 * 1e3
         // 7 days
       });
+      logActivity(user.id, user.name || "admin", "login", "\u7BA1\u7406\u8005\u30ED\u30B0\u30A4\u30F3", ctx.req?.ip || "unknown").catch(console.error);
       return {
         user: {
           id: user.id,
@@ -1013,6 +1361,7 @@ var authRouter = router({
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1e3
       });
+      logActivity(user.id, user.name || "sales", "login", "\u55B6\u696D\u90E8\u968A\u30ED\u30B0\u30A4\u30F3", ctx.req?.ip || "unknown").catch(console.error);
       return {
         user: {
           id: user.id,
@@ -1043,6 +1392,7 @@ var authRouter = router({
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1e3
       });
+      logActivity(user.id, user.name || "company", "login", "\u96FB\u529B\u4F1A\u793E\u30ED\u30B0\u30A4\u30F3", ctx.req?.ip || "unknown").catch(console.error);
       return {
         user: {
           id: user.id,
@@ -2477,6 +2827,7 @@ async function initializeDatabase() {
 async function startServer() {
   initSentry();
   await initializeDatabase();
+  await initializeSpreadsheet();
   const app = express2();
   const server = createServer(app);
   app.use(express2.json({ limit: "50mb" }));
