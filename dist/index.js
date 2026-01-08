@@ -53,7 +53,9 @@ var init_schema = __esm({
       scale: text("scale").notNull(),
       area: text("area").notNull(),
       price: integer("price").default(0).notNull(),
-      // アポイント価格を追加
+      // 入札設定価格
+      monthlyAmount: integer("monthlyAmount").default(0).notNull(),
+      // 月額料金/使用量
       description: text("description"),
       status: text("status").default("active").notNull(),
       createdAt: integer("createdAt", { mode: "timestamp" }).defaultNow().notNull(),
@@ -362,10 +364,19 @@ async function getAllBids() {
   if (!db) return [];
   return db.select().from(bids);
 }
+async function updateBidStatus(bidId, status) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(bids).set({ status }).where(eq(bids.id, bidId));
+}
 async function createNotification(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(notifications).values(data);
+  const now = /* @__PURE__ */ new Date();
+  const result = await db.insert(notifications).values({
+    ...data,
+    createdAt: now
+  });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(notifications).where(eq(notifications.id, id));
   return rows[0];
@@ -388,7 +399,11 @@ async function markAllNotificationsAsRead(userId) {
 async function createMessage(data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(messages).values(data);
+  const now = /* @__PURE__ */ new Date();
+  const result = await db.insert(messages).values({
+    ...data,
+    createdAt: now
+  });
   const id = Number(result.lastInsertRowid);
   const rows = await db.select().from(messages).where(eq(messages.id, id));
   return rows[0];
@@ -840,8 +855,8 @@ var systemRouter = router({
 });
 
 // server/routers.ts
-import { z as z4 } from "zod";
-import { TRPCError as TRPCError5 } from "@trpc/server";
+import { z as z9 } from "zod";
+import { TRPCError as TRPCError9 } from "@trpc/server";
 
 // server/routers/auth.ts
 import { z as z2 } from "zod";
@@ -912,7 +927,7 @@ var loginSchema = z2.object({
   password: z2.string()
 });
 var changePasswordSchema = z2.object({
-  oldPassword: z2.string().min(6),
+  currentPassword: z2.string().min(1),
   newPassword: z2.string().min(6)
 });
 var updateProfileSchema = z2.object({
@@ -1032,7 +1047,7 @@ var authRouter = router({
   changePassword: protectedProcedure.input(changePasswordSchema).mutation(async ({ ctx, input }) => {
     const success = await changePassword(
       ctx.user.id,
-      input.oldPassword,
+      input.currentPassword,
       input.newPassword
     );
     if (!success) {
@@ -1182,34 +1197,649 @@ var adminRouter = router({
   })
 });
 
+// server/routers/chatbot.ts
+import { z as z4 } from "zod";
+import { TRPCError as TRPCError5 } from "@trpc/server";
+var rateLimitStore = /* @__PURE__ */ new Map();
+var RATE_LIMIT_WINDOW = 60 * 1e3;
+var RATE_LIMIT_MAX = 10;
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const userLimit = rateLimitStore.get(userId);
+  if (!userLimit || now > userLimit.resetAt) {
+    rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (userLimit.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  userLimit.count++;
+  return true;
+}
+var FAQ_RESPONSES = {
+  "\u6848\u4EF6": "\u6848\u4EF6\u306E\u767B\u9332\u306F\u3001\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9\u306E\u300C\u6848\u4EF6\u30C7\u30FC\u30BF\u7BA1\u7406\u300D\u304B\u3089\u884C\u3048\u307E\u3059\u3002\u65B0\u898F\u767B\u9332\u30DC\u30BF\u30F3\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u3001\u5FC5\u8981\u306A\u60C5\u5831\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "\u767B\u9332": "\u65B0\u898F\u767B\u9332\u306B\u3064\u3044\u3066\u306F\u3001\u7BA1\u7406\u8005\u306B\u304A\u554F\u3044\u5408\u308F\u305B\u304F\u3060\u3055\u3044\u3002\u55B6\u696D\u90E8\u968A\u3084\u96FB\u529B\u4F1A\u793E\u306E\u30A2\u30AB\u30A6\u30F3\u30C8\u767A\u884C\u306F\u7BA1\u7406\u8005\u304C\u884C\u3044\u307E\u3059\u3002",
+  "\u5165\u672D": "\u5165\u672D\u306F\u96FB\u529B\u4F1A\u793E\u30A2\u30AB\u30A6\u30F3\u30C8\u3067\u30ED\u30B0\u30A4\u30F3\u5F8C\u3001\u30DE\u30FC\u30B1\u30C3\u30C8\u30D7\u30EC\u30A4\u30B9\u304B\u3089\u884C\u3048\u307E\u3059\u3002\u6848\u4EF6\u8A73\u7D30\u3092\u78BA\u8A8D\u3057\u3001\u5165\u672D\u91D1\u984D\u3092\u5165\u529B\u3057\u3066\u9001\u4FE1\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "\u30ED\u30B0\u30A4\u30F3": "\u30ED\u30B0\u30A4\u30F3\u30DA\u30FC\u30B8\u3067\u30E6\u30FC\u30B6\u30FCID\u3068\u30D1\u30B9\u30EF\u30FC\u30C9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30D1\u30B9\u30EF\u30FC\u30C9\u3092\u5FD8\u308C\u305F\u5834\u5408\u306F\u7BA1\u7406\u8005\u306B\u304A\u554F\u3044\u5408\u308F\u305B\u304F\u3060\u3055\u3044\u3002",
+  "\u30D1\u30B9\u30EF\u30FC\u30C9": "\u30D1\u30B9\u30EF\u30FC\u30C9\u306E\u30EA\u30BB\u30C3\u30C8\u306F\u7BA1\u7406\u8005\u306B\u304A\u554F\u3044\u5408\u308F\u305B\u304F\u3060\u3055\u3044\u3002\u30BB\u30AD\u30E5\u30EA\u30C6\u30A3\u306E\u305F\u3081\u3001\u672C\u4EBA\u78BA\u8A8D\u304C\u5FC5\u8981\u3067\u3059\u3002",
+  "\u4F7F\u3044\u65B9": "LUX\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306F\u3001\u55B6\u696D\u90E8\u968A\u304C\u6848\u4EF6\u3092\u767B\u9332\u3057\u3001\u96FB\u529B\u4F1A\u793E\u304C\u5165\u672D\u3059\u308B\u30DE\u30C3\u30C1\u30F3\u30B0\u30B7\u30B9\u30C6\u30E0\u3067\u3059\u3002\u8A73\u7D30\u306F\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9\u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044\u3002",
+  "\u30D8\u30EB\u30D7": "\u304A\u56F0\u308A\u306E\u70B9\u304C\u3054\u3056\u3044\u307E\u3057\u305F\u3089\u3001\u5177\u4F53\u7684\u306A\u8CEA\u554F\u3092\u304A\u805E\u304B\u305B\u304F\u3060\u3055\u3044\u3002\u6848\u4EF6\u767B\u9332\u3001\u5165\u672D\u3001\u30A2\u30AB\u30A6\u30F3\u30C8\u7BA1\u7406\u306A\u3069\u3001\u69D8\u3005\u306A\u30B5\u30DD\u30FC\u30C8\u304C\u53EF\u80FD\u3067\u3059\u3002",
+  "\u3053\u3093\u306B\u3061\u306F": "\u3053\u3093\u306B\u3061\u306F\uFF01LUX\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u3078\u3088\u3046\u3053\u305D\u3002\u4F55\u304B\u304A\u624B\u4F1D\u3044\u3067\u304D\u308B\u3053\u3068\u306F\u3042\u308A\u307E\u3059\u304B\uFF1F",
+  "\u3042\u308A\u304C\u3068\u3046": "\u3069\u3046\u3044\u305F\u3057\u307E\u3057\u3066\uFF01\u4ED6\u306B\u3054\u8CEA\u554F\u304C\u3054\u3056\u3044\u307E\u3057\u305F\u3089\u3001\u304A\u6C17\u8EFD\u306B\u304A\u805E\u304D\u304F\u3060\u3055\u3044\u3002"
+};
+function getFallbackResponse(message) {
+  const lowerMessage = message.toLowerCase();
+  for (const [keyword, response] of Object.entries(FAQ_RESPONSES)) {
+    if (lowerMessage.includes(keyword)) {
+      return response;
+    }
+  }
+  return null;
+}
+var SYSTEM_PROMPT = `\u3042\u306A\u305F\u306FLUX\u96FB\u529B\u53D6\u5F15\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306E\u512A\u79C0\u306AAI\u30A2\u30B7\u30B9\u30BF\u30F3\u30C8\u3067\u3059\u3002
+\u30E6\u30FC\u30B6\u30FC\u306E\u8CEA\u554F\u306B\u5BFE\u3057\u3066\u3001\u89AA\u5207\u3067\u7C21\u6F54\u306A\u65E5\u672C\u8A9E\u3067\u56DE\u7B54\u3057\u3066\u304F\u3060\u3055\u3044\u3002
+
+\u3010\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u306E\u6982\u8981\u3011
+LUX\u306F\u3001\u55B6\u696D\u90E8\u968A\u3068\u96FB\u529B\u4F1A\u793E\u3092\u3064\u306A\u3050B2B\u30DE\u30C3\u30C1\u30F3\u30B0\u30D7\u30E9\u30C3\u30C8\u30D5\u30A9\u30FC\u30E0\u3067\u3059\u3002
+
+\u3010\u30E6\u30FC\u30B6\u30FC\u306E\u7A2E\u985E\u3068\u6A5F\u80FD\u3011
+1. \u7BA1\u7406\u8005\uFF08Admin\uFF09
+   - \u5168\u6848\u4EF6\u30FB\u5168\u30E6\u30FC\u30B6\u30FC\u306E\u7BA1\u7406
+   - \u5165\u672D\u306E\u627F\u8A8D\u30FB\u5374\u4E0B
+   - \u53D6\u5F15\u30FB\u8ACB\u6C42\u7BA1\u7406
+   - \u30B7\u30B9\u30C6\u30E0\u8A2D\u5B9A
+
+2. \u55B6\u696D\u90E8\u968A\uFF08Sales\uFF09
+   - \u6848\u4EF6\u306E\u767B\u9332\u30FB\u7BA1\u7406
+   - \u5165\u672D\u72B6\u6CC1\u306E\u78BA\u8A8D
+   - \u6210\u7D04\u5B9F\u7E3E\u306E\u78BA\u8A8D
+
+3. \u96FB\u529B\u4F1A\u793E\uFF08Power Company\uFF09
+   - \u30DE\u30FC\u30B1\u30C3\u30C8\u30D7\u30EC\u30A4\u30B9\u3067\u6848\u4EF6\u3092\u95B2\u89A7
+   - \u6848\u4EF6\u3078\u306E\u5165\u672D
+   - \u8CFC\u5165\u5C65\u6B74\u306E\u78BA\u8A8D
+
+\u3010\u56DE\u7B54\u306E\u30AC\u30A4\u30C9\u30E9\u30A4\u30F3\u3011
+- \u7C21\u6F54\u3067\u5206\u304B\u308A\u3084\u3059\u3044\u56DE\u7B54\u3092\u5FC3\u304C\u3051\u308B
+- \u5177\u4F53\u7684\u306A\u64CD\u4F5C\u624B\u9806\u3092\u6848\u5185\u3059\u308B
+- \u4E0D\u660E\u70B9\u306F\u7BA1\u7406\u8005\u3078\u306E\u554F\u3044\u5408\u308F\u305B\u3092\u4FC3\u3059
+- \u4E01\u5BE7\u3067\u89AA\u3057\u307F\u3084\u3059\u3044\u30C8\u30FC\u30F3\u3092\u7DAD\u6301\u3059\u308B`;
+var chatbotRouter = router({
+  chat: protectedProcedure.input(z4.object({ message: z4.string().min(1).max(1e3) })).mutation(async ({ ctx, input }) => {
+    if (!checkRateLimit(ctx.user.id)) {
+      throw new TRPCError5({
+        code: "TOO_MANY_REQUESTS",
+        message: "\u8CEA\u554F\u306F1\u5206\u9593\u306B10\u56DE\u307E\u3067\u3067\u3059\u3002\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002"
+      });
+    }
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      console.log("OPENAI_API_KEY not set, using fallback responses");
+      const fallback = getFallbackResponse(input.message);
+      if (fallback) {
+        return { reply: fallback };
+      }
+      return {
+        reply: "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u3002\u73FE\u5728AI\u30B5\u30DD\u30FC\u30C8\u306F\u4E00\u6642\u7684\u306B\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u304A\u554F\u3044\u5408\u308F\u305B\u306F\u7BA1\u7406\u8005\u307E\u3067\u3054\u9023\u7D61\u304F\u3060\u3055\u3044\u3002"
+      };
+    }
+    try {
+      const response = await fetch(
+        process.env.OPENAI_BASE_URL || "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4.1-nano",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: input.message }
+            ],
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        }
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenAI API error response:", response.status, errorText);
+        const fallback = getFallbackResponse(input.message);
+        if (fallback) {
+          return { reply: fallback };
+        }
+        throw new Error(`OpenAI API request failed: ${response.status}`);
+      }
+      const data = await response.json();
+      const reply = data.choices?.[0]?.message?.content || "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u3002\u56DE\u7B54\u3092\u751F\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002";
+      return { reply };
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      const fallback = getFallbackResponse(input.message);
+      if (fallback) {
+        return { reply: fallback };
+      }
+      return {
+        reply: "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u3002\u73FE\u5728AI\u30B5\u30DD\u30FC\u30C8\u306F\u4E00\u6642\u7684\u306B\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002\u3057\u3070\u3089\u304F\u7D4C\u3063\u3066\u304B\u3089\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002"
+      };
+    }
+  })
+});
+
+// server/routers/error-fix.ts
+import { z as z5 } from "zod";
+import { TRPCError as TRPCError6 } from "@trpc/server";
+var errorFixRouter = router({
+  analyzeError: protectedProcedure.input(z5.object({
+    errorMessage: z5.string(),
+    stackTrace: z5.string().optional()
+  })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError6({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      throw new TRPCError6({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "AI\u4FEE\u6B63\u6A5F\u80FD\u304C\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002"
+      });
+    }
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `\u3042\u306A\u305F\u306F\u30B7\u30B9\u30C6\u30E0\u30A8\u30E9\u30FC\u3092\u5206\u6790\u3059\u308B\u5C02\u9580\u5BB6\u3067\u3059\u3002
+\u4EE5\u4E0B\u306E\u30A8\u30E9\u30FC\u60C5\u5831\u3092\u5206\u6790\u3057\u3001\u539F\u56E0\u3068\u4FEE\u6B63\u65B9\u6CD5\u3092\u65E5\u672C\u8A9E\u3067\u63D0\u6848\u3057\u3066\u304F\u3060\u3055\u3044\u3002
+
+\u30A8\u30E9\u30FC\u30E1\u30C3\u30BB\u30FC\u30B8: ${input.errorMessage}
+${input.stackTrace ? `\u30B9\u30BF\u30C3\u30AF\u30C8\u30EC\u30FC\u30B9: ${input.stackTrace}` : ""}
+
+\u4EE5\u4E0B\u306E\u5F62\u5F0F\u3067\u56DE\u7B54\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A
+1. \u30A8\u30E9\u30FC\u306E\u539F\u56E0
+2. \u63A8\u5968\u3055\u308C\u308B\u4FEE\u6B63\u65B9\u6CD5
+3. \u4E88\u9632\u7B56`
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1e3
+            }
+          })
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Gemini API request failed");
+      }
+      const data = await response.json();
+      const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "\u5206\u6790\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002";
+      return { analysis };
+    } catch (error) {
+      console.error("Error analysis failed:", error);
+      throw new TRPCError6({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "\u30A8\u30E9\u30FC\u5206\u6790\u4E2D\u306B\u554F\u984C\u304C\u767A\u751F\u3057\u307E\u3057\u305F\u3002"
+      });
+    }
+  })
+});
+
+// server/routers/system-status.ts
+import { TRPCError as TRPCError7 } from "@trpc/server";
+import { z as z6 } from "zod";
+init_schema();
+import { eq as eq2, sql, and as and2, gte as gte2 } from "drizzle-orm";
+var systemStatusRouter = router({
+  getTodayStatus: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError7({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    try {
+      const today = /* @__PURE__ */ new Date();
+      today.setHours(0, 0, 0, 0);
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError7({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "\u30C7\u30FC\u30BF\u30D9\u30FC\u30B9\u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3002"
+        });
+      }
+      const newAppointmentsToday = await db.select({ count: sql`count(*)` }).from(appointments).where(gte2(appointments.createdAt, today)).then((rows) => rows[0]?.count || 0);
+      const newBidsToday = await db.select({ count: sql`count(*)` }).from(bids).where(gte2(bids.createdAt, today)).then((rows) => rows[0]?.count || 0);
+      const pendingAppointments = await db.select({ count: sql`count(*)` }).from(appointments).where(eq2(appointments.status, "pending")).then((rows) => rows[0]?.count || 0);
+      const activeAppointments = await db.select({ count: sql`count(*)` }).from(appointments).where(eq2(appointments.status, "active")).then((rows) => rows[0]?.count || 0);
+      const salesCount = await db.select({ count: sql`count(*)` }).from(users).where(eq2(users.role, "sales")).then((rows) => rows[0]?.count || 0);
+      const powerCompanyCount = await db.select({ count: sql`count(*)` }).from(users).where(eq2(users.role, "power_company")).then((rows) => rows[0]?.count || 0);
+      const activeSalesCount = await db.select({ count: sql`count(*)` }).from(users).where(and2(eq2(users.role, "sales"), eq2(users.isActive, 1))).then((rows) => rows[0]?.count || 0);
+      const activePowerCompanyCount = await db.select({ count: sql`count(*)` }).from(users).where(and2(eq2(users.role, "power_company"), eq2(users.isActive, 1))).then((rows) => rows[0]?.count || 0);
+      let systemHealth = "healthy";
+      const issues = [];
+      if (pendingAppointments > 5) {
+        systemHealth = "warning";
+        issues.push({
+          id: "pending-appointments-high",
+          severity: "warning",
+          title: "\u627F\u8A8D\u5F85\u3061\u306E\u6848\u4EF6\u304C\u5897\u3048\u3066\u3044\u307E\u3059",
+          description: `\u73FE\u5728${pendingAppointments}\u4EF6\u306E\u6848\u4EF6\u304C\u627F\u8A8D\u5F85\u3061\u3067\u3059\u3002\u65E9\u3081\u306E\u78BA\u8A8D\u3092\u304A\u52E7\u3081\u3057\u307E\u3059\u3002`,
+          impact: "\u6848\u4EF6\u306E\u516C\u958B\u304C\u9045\u308C\u308B\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059",
+          status: "\u5BFE\u5FDC\u5F85\u3061",
+          actionRequired: true
+        });
+      } else if (pendingAppointments > 0) {
+        issues.push({
+          id: "pending-appointments",
+          severity: "info",
+          title: "\u627F\u8A8D\u5F85\u3061\u306E\u6848\u4EF6\u304C\u3042\u308A\u307E\u3059",
+          description: `${pendingAppointments}\u4EF6\u306E\u6848\u4EF6\u304C\u627F\u8A8D\u5F85\u3061\u3067\u3059\u3002`,
+          impact: "\u901A\u5E38\u7BC4\u56F2\u5185",
+          status: "\u78BA\u8A8D\u63A8\u5968",
+          actionRequired: true
+        });
+      }
+      if (newAppointmentsToday > 0 || newBidsToday > 0) {
+        issues.push({
+          id: "daily-activity",
+          severity: "info",
+          title: "\u672C\u65E5\u306E\u65B0\u898F\u6D3B\u52D5",
+          description: `\u65B0\u898F\u6848\u4EF6\uFF1A${newAppointmentsToday}\u4EF6\u3001\u65B0\u898F\u5165\u672D\uFF1A${newBidsToday}\u4EF6`,
+          impact: "\u306A\u3057",
+          status: "\u60C5\u5831\u306E\u307F",
+          actionRequired: false
+        });
+      }
+      return {
+        systemHealth,
+        summary: {
+          newAppointmentsToday,
+          newBidsToday,
+          pendingAppointments,
+          activeAppointments,
+          salesCount,
+          powerCompanyCount,
+          activeSalesCount,
+          activePowerCompanyCount
+        },
+        issues,
+        lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    } catch (error) {
+      console.error("System status fetch error:", error);
+      throw new TRPCError7({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "\u30B7\u30B9\u30C6\u30E0\u72B6\u6CC1\u306E\u53D6\u5F97\u4E2D\u306B\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F\u3002"
+      });
+    }
+  }),
+  approveIssue: protectedProcedure.input(z6.object({ issueId: z6.string() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError7({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    console.log(`Issue ${input.issueId} approved by ${ctx.user.email}`);
+    return {
+      success: true,
+      message: "\u627F\u8A8D\u3057\u307E\u3057\u305F"
+    };
+  })
+});
+
+// server/routers/auto-fix.ts
+import { TRPCError as TRPCError8 } from "@trpc/server";
+import { z as z7 } from "zod";
+function getFallbackAnalysis(errorLog, stackTrace) {
+  const errorPatterns = [
+    {
+      pattern: /Cannot read properties of undefined \(reading '(\w+)'\)/i,
+      analysis: (match) => `\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u304C undefined \u306E\u72B6\u614B\u3067 '${match[1]}' \u30D7\u30ED\u30D1\u30C6\u30A3\u306B\u30A2\u30AF\u30BB\u30B9\u3057\u3088\u3046\u3068\u3057\u3066\u3044\u307E\u3059\u3002\u30C7\u30FC\u30BF\u306E\u53D6\u5F97\u524D\u306Bnull\u30C1\u30A7\u30C3\u30AF\u3092\u8FFD\u52A0\u3059\u308B\u304B\u3001\u30AA\u30D7\u30B7\u30E7\u30CA\u30EB\u30C1\u30A7\u30FC\u30F3(?.)\u3092\u4F7F\u7528\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+      severity: "medium"
+    },
+    {
+      pattern: /Cannot read properties of null/i,
+      analysis: () => "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u304C null \u306E\u72B6\u614B\u3067\u30D7\u30ED\u30D1\u30C6\u30A3\u306B\u30A2\u30AF\u30BB\u30B9\u3057\u3088\u3046\u3068\u3057\u3066\u3044\u307E\u3059\u3002null\u30C1\u30A7\u30C3\u30AF\u3092\u8FFD\u52A0\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      severity: "medium"
+    },
+    {
+      pattern: /is not a function/i,
+      analysis: () => "\u95A2\u6570\u3068\u3057\u3066\u547C\u3073\u51FA\u305D\u3046\u3068\u3057\u3066\u3044\u308B\u3082\u306E\u304C\u95A2\u6570\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u5909\u6570\u306E\u578B\u3084\u521D\u671F\u5316\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      severity: "high"
+    },
+    {
+      pattern: /Network Error|Failed to fetch/i,
+      analysis: () => "\u30CD\u30C3\u30C8\u30EF\u30FC\u30AF\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u3066\u3044\u307E\u3059\u3002API\u30A8\u30F3\u30C9\u30DD\u30A4\u30F3\u30C8\u306E\u53EF\u7528\u6027\u3068CORS\u8A2D\u5B9A\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      severity: "high"
+    },
+    {
+      pattern: /no such column/i,
+      analysis: () => "\u30C7\u30FC\u30BF\u30D9\u30FC\u30B9\u306B\u6307\u5B9A\u3055\u308C\u305F\u30AB\u30E9\u30E0\u304C\u5B58\u5728\u3057\u307E\u305B\u3093\u3002\u30B9\u30AD\u30FC\u30DE\u3068\u30AF\u30A8\u30EA\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      severity: "high"
+    },
+    {
+      pattern: /UNIQUE constraint failed/i,
+      analysis: () => "\u4E00\u610F\u5236\u7D04\u9055\u53CD\u3067\u3059\u3002\u91CD\u8907\u3059\u308B\u30C7\u30FC\u30BF\u3092\u633F\u5165\u3057\u3088\u3046\u3068\u3057\u3066\u3044\u307E\u3059\u3002",
+      severity: "medium"
+    }
+  ];
+  const filePathMatch = stackTrace.match(/at\s+\w+\s+\(([^:]+\.tsx?)/);
+  const filePath = filePathMatch ? `/home/ubuntu/lux-platform/client/src/${filePathMatch[1]}` : "/home/ubuntu/lux-platform/client/src/App.tsx";
+  for (const { pattern, analysis, severity } of errorPatterns) {
+    const match = errorLog.match(pattern);
+    if (match) {
+      return {
+        analysis: typeof analysis === "function" ? analysis(match) : analysis,
+        fixCode: `// \u81EA\u52D5\u4FEE\u6B63\u30B3\u30FC\u30C9\u306F\u751F\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002
+// \u4EE5\u4E0B\u306E\u30AC\u30A4\u30C0\u30F3\u30B9\u306B\u5F93\u3063\u3066\u624B\u52D5\u3067\u4FEE\u6B63\u3057\u3066\u304F\u3060\u3055\u3044\u3002
+// 
+// \u63A8\u5968\u3055\u308C\u308B\u4FEE\u6B63\u65B9\u6CD5:
+// 1. \u8A72\u5F53\u7B87\u6240\u3067null\u30C1\u30A7\u30C3\u30AF\u3092\u8FFD\u52A0
+// 2. \u30AA\u30D7\u30B7\u30E7\u30CA\u30EB\u30C1\u30A7\u30FC\u30F3(?.)\u3092\u4F7F\u7528
+// 3. \u30C7\u30D5\u30A9\u30EB\u30C8\u5024\u3092\u8A2D\u5B9A
+// 
+// \u4F8B:
+// const data = response?.data ?? [];
+// if (data && data.length > 0) { ... }`,
+        filePath,
+        severity
+      };
+    }
+  }
+  return {
+    analysis: "\u30A8\u30E9\u30FC\u306E\u8A73\u7D30\u306A\u5206\u6790\u306B\u306F\u8FFD\u52A0\u60C5\u5831\u304C\u5FC5\u8981\u3067\u3059\u3002\u30B9\u30BF\u30C3\u30AF\u30C8\u30EC\u30FC\u30B9\u3092\u78BA\u8A8D\u3057\u3001\u8A72\u5F53\u3059\u308B\u30B3\u30FC\u30C9\u3092\u898B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+    fixCode: "",
+    filePath,
+    severity: "medium"
+  };
+}
+async function analyzeErrorWithGemini(errorLog, stackTrace) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) {
+    console.log("GEMINI_API_KEY is not set, using fallback analysis");
+    return getFallbackAnalysis(errorLog, stackTrace);
+  }
+  const prompt = `\u3042\u306A\u305F\u306F\u30B7\u30B9\u30C6\u30E0\u30A8\u30E9\u30FC\u3092\u5206\u6790\u3057\u3066\u4FEE\u6B63\u6848\u3092\u63D0\u6848\u3059\u308B\u30A8\u30AD\u30B9\u30D1\u30FC\u30C8\u3067\u3059\u3002
+
+\u4EE5\u4E0B\u306E\u30A8\u30E9\u30FC\u30ED\u30B0\u3068\u30B9\u30BF\u30C3\u30AF\u30C8\u30EC\u30FC\u30B9\u3092\u5206\u6790\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A
+
+\u30A8\u30E9\u30FC\u30ED\u30B0:
+${errorLog}
+
+\u30B9\u30BF\u30C3\u30AF\u30C8\u30EC\u30FC\u30B9:
+${stackTrace}
+
+\u4EE5\u4E0B\u306E\u5F62\u5F0F\u3067JSON\u5F62\u5F0F\u3067\u56DE\u7B54\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A
+{
+  "analysis": "\u30A8\u30E9\u30FC\u306E\u539F\u56E0\u3092\u65E5\u672C\u8A9E\u3067\u7C21\u6F54\u306B\u8AAC\u660E",
+  "fixCode": "\u4FEE\u6B63\u5F8C\u306E\u30B3\u30FC\u30C9\u5168\u4F53\uFF08\u8A72\u5F53\u30D5\u30A1\u30A4\u30EB\u306E\u5B8C\u5168\u306A\u30B3\u30FC\u30C9\uFF09",
+  "filePath": "\u4FEE\u6B63\u304C\u5FC5\u8981\u306A\u30D5\u30A1\u30A4\u30EB\u306E\u30D1\u30B9\uFF08\u4F8B: /home/ubuntu/lux-platform/client/src/App.tsx\uFF09",
+  "severity": "low/medium/high \u306E\u3044\u305A\u308C\u304B"
+}
+
+\u6CE8\u610F\uFF1A
+- fixCode\u306F\u8A72\u5F53\u30D5\u30A1\u30A4\u30EB\u306E\u5B8C\u5168\u306A\u30B3\u30FC\u30C9\u3092\u542B\u3081\u3066\u304F\u3060\u3055\u3044
+- filePath\u306F\u7D76\u5BFE\u30D1\u30B9\u3067\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044
+- \u4FEE\u6B63\u304C\u4E0D\u53EF\u80FD\u306A\u5834\u5408\u306F\u3001fixCode\u3092\u7A7A\u6587\u5B57\u5217\u306B\u3057\u3066\u304F\u3060\u3055\u3044`;
+  try {
+    const models = [
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+      "gemini-2.0-flash-exp"
+    ];
+    let lastError = null;
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 8e3
+              }
+            })
+          }
+        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.log(`Model ${model} failed: ${response.status} - ${errorText}`);
+          lastError = new Error(`Gemini API error: ${response.statusText}`);
+          continue;
+        }
+        const data = await response.json();
+        const text2 = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text2.match(/```json\n([\s\S]*?)\n```/) || text2.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("Failed to parse Gemini response");
+        }
+        const result = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        return result;
+      } catch (modelError) {
+        console.log(`Model ${model} error:`, modelError);
+        lastError = modelError;
+        continue;
+      }
+    }
+    console.log("All Gemini models failed, using fallback analysis");
+    return getFallbackAnalysis(errorLog, stackTrace);
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    return getFallbackAnalysis(errorLog, stackTrace);
+  }
+}
+var autoFixRouter = router({
+  // エラーログを分析して修正案を生成
+  analyzeError: protectedProcedure.input(
+    z7.object({
+      errorLog: z7.string(),
+      stackTrace: z7.string()
+    })
+  ).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError8({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    try {
+      const result = await analyzeErrorWithGemini(
+        input.errorLog,
+        input.stackTrace
+      );
+      return {
+        success: true,
+        fixId: `fix-${Date.now()}`,
+        ...result
+      };
+    } catch (error) {
+      console.error("Error analysis failed:", error);
+      throw new TRPCError8({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error.message || "\u30A8\u30E9\u30FC\u5206\u6790\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002"
+      });
+    }
+  }),
+  // 修正案を承認して適用
+  applyFix: protectedProcedure.input(
+    z7.object({
+      fixId: z7.string(),
+      filePath: z7.string(),
+      fixCode: z7.string()
+    })
+  ).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError8({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    try {
+      const fs2 = await import("fs/promises");
+      const { exec } = await import("child_process");
+      const { promisify } = await import("util");
+      const execAsync = promisify(exec);
+      await fs2.writeFile(input.filePath, input.fixCode, "utf-8");
+      const commitMessage = `Auto-fix: ${input.fixId}`;
+      await execAsync(
+        `cd /home/ubuntu/lux-platform && git add "${input.filePath}" && git commit -m "${commitMessage}"`
+      );
+      return {
+        success: true,
+        message: "\u4FEE\u6B63\u3092\u9069\u7528\u3057\u307E\u3057\u305F\u3002",
+        filePath: input.filePath
+      };
+    } catch (error) {
+      console.error("Fix application failed:", error);
+      throw new TRPCError8({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error.message || "\u4FEE\u6B63\u306E\u9069\u7528\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002"
+      });
+    }
+  }),
+  // 修正案の一覧を取得
+  listPendingFixes: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError8({
+        code: "FORBIDDEN",
+        message: "\u3053\u306E\u6A5F\u80FD\u306F\u7BA1\u7406\u8005\u306E\u307F\u5229\u7528\u3067\u304D\u307E\u3059\u3002"
+      });
+    }
+    return {
+      fixes: []
+    };
+  })
+});
+
+// server/routers/sentry-webhook.ts
+import { z as z8 } from "zod";
+var sentryWebhookRouter = router({
+  // Sentry Webhookを受信してGitHub Actionsをトリガー
+  handleWebhook: publicProcedure.input(
+    z8.object({
+      event: z8.object({
+        event_id: z8.string(),
+        message: z8.string().optional(),
+        exception: z8.object({
+          values: z8.array(
+            z8.object({
+              type: z8.string(),
+              value: z8.string(),
+              stacktrace: z8.object({
+                frames: z8.array(z8.any())
+              }).optional()
+            })
+          )
+        }).optional()
+      })
+    })
+  ).mutation(async ({ input }) => {
+    try {
+      const errorMessage = input.event.exception?.values?.[0]?.value || input.event.message || "Unknown error";
+      const stackTrace = JSON.stringify(input.event.exception?.values?.[0]?.stacktrace?.frames || [], null, 2);
+      const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+      const GITHUB_REPO = process.env.GITHUB_REPO || "yokono-haruto/lux-platform";
+      if (!GITHUB_TOKEN) {
+        console.error("GITHUB_TOKEN is not set");
+        return { success: false, message: "GITHUB_TOKEN is not configured" };
+      }
+      const response = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            "Accept": "application/vnd.github+json",
+            "Authorization": `Bearer ${GITHUB_TOKEN}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            event_type: "sentry-error",
+            client_payload: {
+              error_message: errorMessage,
+              stack_trace: stackTrace,
+              event_id: input.event.event_id
+            }
+          })
+        }
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("GitHub API error:", errorText);
+        return { success: false, message: "Failed to trigger GitHub Actions" };
+      }
+      console.log(`\u2705 GitHub Actions triggered for Sentry event: ${input.event.event_id}`);
+      return {
+        success: true,
+        message: "Auto-fix workflow triggered",
+        eventId: input.event.event_id
+      };
+    } catch (error) {
+      console.error("Error handling Sentry webhook:", error);
+      return {
+        success: false,
+        message: error.message || "Unknown error"
+      };
+    }
+  })
+});
+
 // server/routers.ts
-var appointmentSchema = z4.object({
-  title: z4.string().min(1),
-  industry: z4.string().min(1),
-  scale: z4.string().min(1),
-  area: z4.string().min(1),
-  price: z4.number().int().positive("\u4FA1\u683C\u306F1\u5186\u4EE5\u4E0A\u3067\u3042\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059"),
-  description: z4.string().optional(),
-  status: z4.string().optional()
+var appointmentSchema = z9.object({
+  title: z9.string().min(1),
+  industry: z9.string().min(1),
+  scale: z9.string().min(1),
+  area: z9.string().min(1),
+  bidPrice: z9.number().int().min(0, "\u5165\u672D\u8A2D\u5B9A\u4FA1\u683C\u306F0\u4EE5\u4E0A\u3067\u3042\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059"),
+  monthlyAmount: z9.number().int().min(0, "\u6708\u984D\u6599\u91D1\u306F0\u4EE5\u4E0A\u3067\u3042\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059"),
+  description: z9.string().optional(),
+  status: z9.string().optional()
 });
-var bidSchema = z4.object({
-  appointmentId: z4.number().int().positive(),
-  bidAmount: z4.number().positive(),
-  notes: z4.string().optional()
+var bidSchema = z9.object({
+  appointmentId: z9.number().int().positive(),
+  bidAmount: z9.number().positive(),
+  notes: z9.string().optional()
 });
-var filterSchema = z4.object({
-  industry: z4.string().optional(),
-  scale: z4.string().optional(),
-  area: z4.string().optional(),
-  status: z4.string().optional(),
-  search: z4.string().optional(),
-  minPrice: z4.number().optional(),
-  maxPrice: z4.number().optional()
+var filterSchema = z9.object({
+  industry: z9.string().optional(),
+  scale: z9.string().optional(),
+  area: z9.string().optional(),
+  status: z9.string().optional(),
+  search: z9.string().optional(),
+  minPrice: z9.number().optional(),
+  maxPrice: z9.number().optional()
 });
 var appointmentsRouter = router({
   create: protectedProcedure.input(appointmentSchema).mutation(async ({ ctx, input }) => {
     if (ctx.user.role !== "sales" && ctx.user.role !== "admin") {
-      throw new TRPCError5({ code: "FORBIDDEN", message: "\u6A29\u9650\u304C\u3042\u308A\u307E\u305B\u3093" });
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u6A29\u9650\u304C\u3042\u308A\u307E\u305B\u3093" });
     }
     const appointment = await createAppointment({
       createdBy: ctx.user.id,
@@ -1217,37 +1847,38 @@ var appointmentsRouter = router({
       industry: input.industry,
       scale: input.scale,
       area: input.area,
-      price: input.price,
+      price: input.bidPrice,
+      monthlyAmount: input.monthlyAmount,
       description: input.description
     });
     return appointment;
   }),
-  update: protectedProcedure.input(z4.object({
-    id: z4.number(),
+  update: protectedProcedure.input(z9.object({
+    id: z9.number(),
     data: appointmentSchema.partial()
   })).mutation(async ({ ctx, input }) => {
     if (ctx.user.role !== "admin") {
-      throw new TRPCError5({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F\u7DE8\u96C6\u53EF\u80FD\u3067\u3059" });
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F\u7DE8\u96C6\u53EF\u80FD\u3067\u3059" });
     }
     await updateAppointment(input.id, input.data);
   }),
-  delete: protectedProcedure.input(z4.number()).mutation(async ({ ctx, input }) => {
+  delete: protectedProcedure.input(z9.number()).mutation(async ({ ctx, input }) => {
     if (ctx.user.role !== "admin") {
-      throw new TRPCError5({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F\u524A\u9664\u53EF\u80FD\u3067\u3059" });
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F\u524A\u9664\u53EF\u80FD\u3067\u3059" });
     }
     await deleteAppointment(input);
   }),
   list: publicProcedure.input(filterSchema).query(async ({ input }) => {
     return getAppointments(input);
   }),
-  getById: publicProcedure.input(z4.number().int().positive()).query(async ({ input }) => {
+  getById: publicProcedure.input(z9.number().int().positive()).query(async ({ input }) => {
     return getAppointmentById(input);
   })
 });
 var bidsRouter = router({
   create: protectedProcedure.input(bidSchema).mutation(async ({ ctx, input }) => {
     if (ctx.user.role !== "power_company") {
-      throw new TRPCError5({ code: "FORBIDDEN", message: "\u96FB\u529B\u4F1A\u793E\u306E\u307F\u304C\u5165\u672D\u3067\u304D\u307E\u3059" });
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u96FB\u529B\u4F1A\u793E\u306E\u307F\u304C\u5165\u672D\u3067\u304D\u307E\u3059" });
     }
     const bid = await createBid({
       appointmentId: input.appointmentId,
@@ -1273,6 +1904,21 @@ var bidsRouter = router({
   }),
   getByUser: protectedProcedure.query(async ({ ctx }) => {
     return getBidsByUserId(ctx.user.id);
+  }),
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F" });
+    }
+    return getAllBids();
+  }),
+  myBids: protectedProcedure.query(async ({ ctx }) => {
+    return getBidsByUserId(ctx.user.id);
+  }),
+  updateStatus: protectedProcedure.input(z9.object({ bidId: z9.number(), status: z9.string() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F" });
+    }
+    await updateBidStatus(input.bidId, input.status);
   })
 });
 var notificationsRouter = router({
@@ -1283,27 +1929,66 @@ var notificationsRouter = router({
     const list = await getNotificationsByUserId(ctx.user.id);
     return list.filter((n) => !n.isRead).length;
   }),
-  markAsRead: protectedProcedure.input(z4.number()).mutation(async ({ input }) => {
+  markAsRead: protectedProcedure.input(z9.number()).mutation(async ({ input }) => {
     await markNotificationAsRead(input);
   }),
   markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
     await markAllNotificationsAsRead(ctx.user.id);
+  }),
+  broadcast: protectedProcedure.input(z9.object({ title: z9.string(), content: z9.string(), targetRole: z9.string() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError9({ code: "FORBIDDEN", message: "\u7BA1\u7406\u8005\u306E\u307F" });
+    }
+    const users2 = await getAllUsers();
+    const targets = input.targetRole === "all" ? users2 : users2.filter((u) => u.role === input.targetRole || input.targetRole === "company" && u.role === "power_company");
+    for (const u of targets) {
+      await createNotification({
+        userId: u.id,
+        type: "system",
+        title: input.title,
+        content: input.content
+      });
+    }
+    return { sent: targets.length };
   })
 });
 var messagesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     return getUserMessages(ctx.user.id);
   }),
-  getConversation: protectedProcedure.input(z4.number()).query(async ({ ctx, input }) => {
+  getConversation: protectedProcedure.input(z9.number()).query(async ({ ctx, input }) => {
     return getConversation(ctx.user.id, input);
   }),
-  send: protectedProcedure.input(z4.object({ receiverId: z4.number(), content: z4.string(), appointmentId: z4.number().optional() })).mutation(async ({ ctx, input }) => {
+  getAvailableUsers: protectedProcedure.query(async ({ ctx }) => {
+    const allUsers = await getAllUsers();
+    const currentUser = ctx.user;
+    if (currentUser.role === "admin") {
+      return allUsers.filter((u) => u.id !== currentUser.id && u.isActive).map((u) => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        companyName: u.companyName
+      }));
+    } else {
+      return allUsers.filter((u) => u.role === "admin" && u.isActive).map((u) => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        companyName: u.companyName
+      }));
+    }
+  }),
+  send: protectedProcedure.input(z9.object({ receiverId: z9.number(), content: z9.string(), appointmentId: z9.number().optional() })).mutation(async ({ ctx, input }) => {
     return createMessage({
       senderId: ctx.user.id,
       receiverId: input.receiverId,
       content: input.content,
       appointmentId: input.appointmentId
     });
+  }),
+  unreadCount: protectedProcedure.query(async ({ ctx }) => {
+    const messages2 = await getUserMessages(ctx.user.id);
+    return messages2.filter((m) => m.receiverId === ctx.user.id && !m.isRead).length;
   })
 });
 var dashboardRouter = router({
@@ -1311,10 +1996,13 @@ var dashboardRouter = router({
     const appointments2 = await getAllAppointments();
     const bids2 = await getAllBids();
     const users2 = await getAllUsers();
+    const salesCount = users2.filter((u) => u.role === "sales").length;
+    const powerCompanyCount = users2.filter((u) => u.role === "power_company").length;
     return {
       totalAppointments: appointments2.length,
       totalBids: bids2.length,
-      totalUsers: users2.length,
+      salesCount,
+      powerCompanyCount,
       activeAppointments: appointments2.filter((a) => a.status === "active").length
     };
   }),
@@ -1339,9 +2027,9 @@ var dashboardRouter = router({
   })
 });
 var aiRouter = router({
-  predictPrice: protectedProcedure.input(z4.number()).query(async ({ input }) => {
+  predictPrice: protectedProcedure.input(z9.number()).query(async ({ input }) => {
     const appointment = await getAppointmentById(input);
-    if (!appointment) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6848\u4EF6\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093" });
+    if (!appointment) throw new TRPCError9({ code: "NOT_FOUND", message: "\u6848\u4EF6\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093" });
     return {
       predictedPrice: Math.floor(appointment.price * (0.9 + Math.random() * 0.2)),
       confidence: "high",
@@ -1358,7 +2046,12 @@ var appRouter = router({
   notifications: notificationsRouter,
   messages: messagesRouter,
   dashboard: dashboardRouter,
-  ai: aiRouter
+  ai: aiRouter,
+  chatbot: chatbotRouter,
+  errorFix: errorFixRouter,
+  systemStatus: systemStatusRouter,
+  autoFix: autoFixRouter,
+  sentryWebhook: sentryWebhookRouter
 });
 
 // server/_core/context.ts
@@ -1380,6 +2073,16 @@ async function createContext(opts) {
         }
         if (user && user.role === "admin") {
           return { req: opts.req, res: opts.res, user };
+        }
+      }
+      if (session.startsWith("user-session-")) {
+        const userIdStr = session.replace("user-session-", "");
+        const userId = parseInt(userIdStr);
+        if (!isNaN(userId)) {
+          user = await getUserById(userId);
+          if (user) {
+            return { req: opts.req, res: opts.res, user };
+          }
         }
       }
     }
@@ -1482,7 +2185,7 @@ async function setupVite(app, server) {
   });
 }
 function serveStatic(app) {
-  const distPath = process.env.NODE_ENV === "development" ? path2.resolve(import.meta.dirname, "../..", "dist", "public") : path2.resolve(import.meta.dirname, "public");
+  const distPath = path2.resolve(process.cwd(), "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
@@ -1496,6 +2199,28 @@ function serveStatic(app) {
 
 // server/_core/index.ts
 import bcrypt2 from "bcrypt";
+
+// server/lib/sentry.ts
+import * as Sentry from "@sentry/node";
+function initSentry() {
+  const dsn = process.env.SENTRY_DSN;
+  if (dsn) {
+    Sentry.init({
+      dsn,
+      environment: process.env.NODE_ENV || "production",
+      tracesSampleRate: 0.1,
+      // 10%のトランザクションをサンプリング
+      beforeSend(event) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("Sentry event:", event);
+        }
+        return event;
+      }
+    });
+  }
+}
+
+// server/_core/index.ts
 function isPortAvailable(port) {
   return new Promise((resolve) => {
     const server = net.createServer();
@@ -1518,10 +2243,10 @@ async function initializeDatabase() {
     console.log("\u{1F527} Initializing database...");
     const { drizzle: drizzle2 } = await import("drizzle-orm/better-sqlite3");
     const Database = (await import("better-sqlite3")).default;
-    const { users: users2, appointments: appointments2, bids: bids2, transactions } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { sql } = await import("drizzle-orm");
+    const { users: users2, appointments: appointments2, bids: bids2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
     const sqlite = new Database("local.db");
     const db = drizzle2(sqlite);
+    const nowMs = () => Date.now();
     console.log("\u{1F4CB} Creating tables...");
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -1536,13 +2261,14 @@ async function initializeDatabase() {
         companyPhone TEXT,
         companyIndustry TEXT,
         isActive INTEGER DEFAULT 1 NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
         lastSignedIn INTEGER
       )
     `);
+    sqlite.exec(`DROP TABLE IF EXISTS appointments`);
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS appointments (
+      CREATE TABLE appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         createdBy INTEGER NOT NULL,
         title TEXT NOT NULL,
@@ -1550,24 +2276,28 @@ async function initializeDatabase() {
         scale TEXT NOT NULL,
         area TEXT NOT NULL,
         price INTEGER DEFAULT 0 NOT NULL,
+        monthlyAmount INTEGER DEFAULT 0 NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'active' NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
+    console.log("\u2705 Appointments table recreated with correct schema (milliseconds timestamps)");
+    sqlite.exec(`DROP TABLE IF EXISTS bids`);
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS bids (
+      CREATE TABLE bids (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         appointmentId INTEGER NOT NULL,
         bidderId INTEGER NOT NULL,
         bidAmount TEXT NOT NULL,
         status TEXT DEFAULT 'pending' NOT NULL,
         notes TEXT,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
+    console.log("\u2705 Bids table recreated with correct schema");
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1576,8 +2306,54 @@ async function initializeDatabase() {
         buyerId INTEGER NOT NULL,
         amount TEXT NOT NULL,
         status TEXT DEFAULT 'pending' NOT NULL,
-        createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-        updatedAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month TEXT NOT NULL,
+        totalAmount TEXT NOT NULL,
+        status TEXT DEFAULT 'draft' NOT NULL,
+        pdfUrl TEXT,
+        pdfKey TEXT,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)),
+        updatedAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS invoiceItems (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoiceId INTEGER NOT NULL,
+        bidId INTEGER NOT NULL,
+        appointmentTitle TEXT NOT NULL,
+        bidderCompanyName TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        isRead INTEGER DEFAULT 0 NOT NULL,
+        link TEXT,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      )
+    `);
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        senderId INTEGER NOT NULL,
+        receiverId INTEGER NOT NULL,
+        appointmentId INTEGER,
+        content TEXT NOT NULL,
+        isRead INTEGER DEFAULT 0 NOT NULL,
+        createdAt INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
       )
     `);
     console.log("\u2705 Tables created successfully");
@@ -1592,13 +2368,16 @@ async function initializeDatabase() {
       passwordHash,
       role: "admin",
       isActive: true,
-      openId: "lux_yokono"
+      openId: "lux_yokono",
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
     }).onConflictDoUpdate({
       target: users2.email,
       set: {
         passwordHash,
         role: "admin",
-        isActive: true
+        isActive: true,
+        updatedAt: /* @__PURE__ */ new Date()
       }
     });
     console.log("\u2705 Admin user created successfully");
@@ -1616,13 +2395,16 @@ async function initializeDatabase() {
       role: "sales",
       companyName: "LUX\u55B6\u696D\u90E8",
       isActive: true,
-      openId: "lux_sales"
+      openId: "lux_sales",
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
     }).onConflictDoUpdate({
       target: users2.email,
       set: {
         passwordHash: salesPasswordHash,
         role: "sales",
-        isActive: true
+        isActive: true,
+        updatedAt: /* @__PURE__ */ new Date()
       }
     });
     console.log("\u2705 Sales user created successfully");
@@ -1640,13 +2422,16 @@ async function initializeDatabase() {
       role: "power_company",
       companyName: "\u30C6\u30B9\u30C8\u96FB\u529B\u682A\u5F0F\u4F1A\u793E",
       isActive: true,
-      openId: "lux_company"
+      openId: "lux_company",
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
     }).onConflictDoUpdate({
       target: users2.email,
       set: {
         passwordHash: companyPasswordHash,
         role: "power_company",
-        isActive: true
+        isActive: true,
+        updatedAt: /* @__PURE__ */ new Date()
       }
     });
     console.log("\u2705 Power company user created successfully");
@@ -1659,6 +2444,7 @@ async function initializeDatabase() {
   }
 }
 async function startServer() {
+  initSentry();
   await initializeDatabase();
   const app = express2();
   const server = createServer(app);
